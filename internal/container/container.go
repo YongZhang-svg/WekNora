@@ -1215,16 +1215,30 @@ func NewDuckDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open duckdb: %w", err)
 	}
 
-	// Try to install and load required extensions.
+	// Try to load required extensions.
 	//   - spatial: used for st_read_meta() to enumerate layer (sheet) names from .xlsx/.xls
 	//   - excel:   used for read_xlsx() which gives proper type inference per sheet
+	//
+	// Strategy: try LOAD first (instant if cached locally), fall back to INSTALL+LOAD
+	// only when the extension is not yet available. This avoids a slow network
+	// download on every startup when extensions are already cached.
 	bgCtx := context.Background()
 	for _, ext := range []string{"spatial", "excel"} {
-		if _, err := sqlDB.ExecContext(bgCtx, fmt.Sprintf("INSTALL %s;", ext)); err != nil {
+		// Try LOAD first — if the extension is already cached locally this is instant.
+		if _, err := sqlDB.ExecContext(bgCtx, fmt.Sprintf("LOAD %s;", ext)); err == nil {
+			logger.Infof(bgCtx, "[DuckDB] Extension %s loaded (cached)", ext)
+			continue
+		}
+		// Extension not cached — try INSTALL then LOAD.
+		installCtx, cancel := context.WithTimeout(bgCtx, 30*time.Second)
+		if _, err := sqlDB.ExecContext(installCtx, fmt.Sprintf("INSTALL %s;", ext)); err != nil {
 			logger.Warnf(bgCtx, "[DuckDB] Failed to install %s extension: %v", ext, err)
 		}
+		cancel()
 		if _, err := sqlDB.ExecContext(bgCtx, fmt.Sprintf("LOAD %s;", ext)); err != nil {
 			logger.Warnf(bgCtx, "[DuckDB] Failed to load %s extension: %v", ext, err)
+		} else {
+			logger.Infof(bgCtx, "[DuckDB] Extension %s loaded (downloaded)", ext)
 		}
 	}
 

@@ -83,17 +83,48 @@ func TestScriptValidator_ValidateScript(t *testing.T) {
 			shouldFail: true,
 			errorType:  "network_access",
 		},
+		// docker/kubectl/service as shell commands should still be blocked
+		// but now detected via dangerous_pattern (regex context-aware matching)
 		{
-			name:       "docker command",
-			content:    `docker run ubuntu`,
+			name:       "docker shell command",
+			content:    "docker run ubuntu",
 			shouldFail: true,
-			errorType:  "dangerous_command",
+			errorType:  "dangerous_pattern",
 		},
 		{
-			name:       "kubectl command",
-			content:    `kubectl get pods`,
+			name:       "kubectl shell command",
+			content:    "kubectl get pods",
 			shouldFail: true,
-			errorType:  "dangerous_command",
+			errorType:  "dangerous_pattern",
+		},
+		{
+			name:       "service shell command",
+			content:    "service nginx start",
+			shouldFail: true,
+			errorType:  "dangerous_pattern",
+		},
+		{
+			name:       "service at line start in bash",
+			content:    "#!/bin/bash\nservice sshd restart",
+			shouldFail: true,
+			errorType:  "dangerous_pattern",
+		},
+		// Python string literals containing "service"/"docker"/"kubectl" should NOT be blocked
+		// (these were previously false positives when using strings.Contains)
+		{
+			name:       "python string literal service keyword",
+			content:    `ARCH_KEYWORDS = {"架构", "服务", "service", "controller"}`,
+			shouldFail: false,
+		},
+		{
+			name:       "python string literal docker in comment",
+			content:    "# docker container reference in comment\nprint(\"done\")",
+			shouldFail: false,
+		},
+		{
+			name:       "python string literal kubectl",
+			content:    "tool = \"kubectl\"  # just a string\nprint(tool)",
+			shouldFail: false,
 		},
 		{
 			name:       "fork bomb",
@@ -118,6 +149,19 @@ func TestScriptValidator_ValidateScript(t *testing.T) {
 			content:    `cat ~/.ssh/id_rsa`,
 			shouldFail: true,
 			errorType:  "dangerous_command",
+		},
+		// Additional coverage: shell operators + dangerous commands
+		{
+			name:       "piped docker command",
+			content:    "echo done | docker exec -it container bash",
+			shouldFail: true,
+			errorType:  "dangerous_pattern",
+		},
+		{
+			name:       "chained service command",
+			content:    "echo start; service httpd restart",
+			shouldFail: true,
+			errorType:  "dangerous_pattern",
 		},
 	}
 

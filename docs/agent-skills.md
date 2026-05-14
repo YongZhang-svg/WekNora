@@ -498,6 +498,8 @@ sh scripts/build_images.sh -s
 **镜像内置环境**：
 - Python 3.11 + pip（requests、pyyaml、pandas、beautifulsoup4）
 - Node.js 20 + npm
+- Mermaid CLI（mmdc）+ Chromium — 支持将 .mmd 渲染为 .png/.svg 图片
+- CJK 字体（fonts-noto-cjk）— 支持中文、日文、韩文渲染
 - CLI 工具：jq、curl、bash、grep、sed、awk 等
 
 ```bash

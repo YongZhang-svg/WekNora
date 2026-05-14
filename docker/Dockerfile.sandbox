@@ -15,12 +15,49 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 # Install minimal CLI tools (bash/grep/sed/coreutils already in slim image)
+# Also install Chromium dependencies for mermaid-cli (mmdc) rendering
+# And graphviz for diagrams library, texlive for matplotlib LaTeX rendering
 RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
+    chromium \
+    fonts-noto-cjk \
+    graphviz \
+    texlive-base \
+    texlive-pictures \
+    texlive-latex-extra \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
-# Note: Current preloaded skills only use Python stdlib
-# Add packages here when skills actually need them:
+# Configure Puppeteer to use system Chromium instead of downloading its own
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Install mermaid-cli (mmdc) for rendering .mmd -> .png/.svg
+# Uses system Chromium via puppeteer-config.json
+# PUPPETEER_SKIP_DOWNLOAD prevents npm from downloading Chromium during install
+COPY docker/puppeteer-config.json /etc/mermaid-cli/puppeteer-config.json
+RUN npm install -g @mermaid-js/mermaid-cli
+
+# Bundle mermaid.js for offline HTML rendering fallback
+# Copy from the installed mermaid-cli node_modules to a shared location
+# RUN mkdir -p /usr/local/share/mermaid && \
+#     cp /usr/local/lib/node_modules/@mermaid-js/mermaid-cli/node_modules/@mermaid-js/mermaid/dist/mermaid.min.js /usr/local/share/mermaid/mermaid.min.js && \
+#     chmod 644 /usr/local/share/mermaid/mermaid.min.js
+
+RUN mkdir -p /usr/local/share/mermaid && \
+    MERMAID_FILE=$(find /usr/local/lib/node_modules -name mermaid.min.js -path "*/dist/*" | head -1) && \
+    if [ -z "$MERMAID_FILE" ]; then echo "mermaid.min.js not found"; exit 1; fi && \
+    cp "$MERMAID_FILE" /usr/local/share/mermaid/mermaid.min.js && \
+    chmod 644 /usr/local/share/mermaid/mermaid.min.js
+# Install Python packages required by preloaded skills
+RUN pip install --no-cache-dir \
+    diagrams \
+    matplotlib \
+    seaborn \
+    plotly \
+    networkx \
+    pillow
+
+# Note: Add more Python packages here when skills need them
 
 # Create non-root user (UID 1000) for sandbox execution
 RUN groupadd -g 1000 sandbox && \

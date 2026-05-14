@@ -314,13 +314,17 @@ func (v *ScriptValidator) hasEmbeddedShellCommands(content string) bool {
 	return false
 }
 
-// getDefaultDangerousCommands returns commands that should not appear in scripts
+// getDefaultDangerousCommands returns commands that should not appear in scripts.
+//
+// IMPORTANT: Only add entries here that are specific enough to avoid false positives
+// in non-shell script contexts (Python, Node, etc.). Bare generic words like "service"
+// or "docker" can appear as string literals or variable names in legitimate code and
+// MUST use regex-based matching in getDefaultDangerousPatterns() instead.
 func getDefaultDangerousCommands() []string {
 	return []string{
 		// System modification - various forms of dangerous rm
 		"rm -rf /",
 		"rm -fr /",
-		"rm -rf /", // with different spacing
 		"rm -rf/*",
 		"rm -rf *",
 
@@ -368,25 +372,28 @@ func getDefaultDangerousCommands() []string {
 		"crontab",
 		"/etc/cron",
 
-		// Service manipulation
+		// Service manipulation (systemctl is specific enough; "service" is too generic
+		// and moved to dangerousPatterns to avoid false positives in Python code)
 		"systemctl",
-		"service",
 
 		// Module/kernel manipulation
 		"insmod",
 		"modprobe",
 		"rmmod",
 
-		// Container escape attempts
-		"docker",
-		"kubectl",
+		// Container escape attempts ("docker" and "kubectl" are too generic as bare
+		// words and moved to dangerousPatterns to avoid false positives)
 		"nsenter",
 		"unshare",
 		"capsh",
 	}
 }
 
-// getDefaultDangerousPatterns returns regex patterns for dangerous operations
+// getDefaultDangerousPatterns returns regex patterns for dangerous operations.
+//
+// Bare generic words ("service", "docker", "kubectl") that could appear as
+// Python string literals or variable names are placed here with context-aware
+// regex patterns instead of simple string.Contains matching in dangerousCommands.
 func getDefaultDangerousPatterns() []string {
 	return []string{
 		// Base64 encoded payloads (often used to hide malicious code)
@@ -437,6 +444,22 @@ func getDefaultDangerousPatterns() []string {
 		// Dangerous rm patterns
 		`rm\s+-[rf]+\s+/`, // rm -rf / or rm -fr /
 		`rm\s+--no-preserve-root`,
+
+		// Service manipulation: match shell command usage (e.g. in bash scripts)
+		// but NOT Python string literals like "service" in a set/dict.
+		// Pattern: "service" as a standalone command (at line start or after shell operators)
+		`(?m)^\s*service\s+`,
+		`\|\s*service\s+`,
+		`;\s*service\s+`,
+
+		// Container escape: match shell command usage of docker/kubectl
+		// but NOT references in Python string literals or comments.
+		`(?m)^\s*docker\s+`,
+		`\|\s*docker\s+`,
+		`;\s*docker\s+`,
+		`(?m)^\s*kubectl\s+`,
+		`\|\s*kubectl\s+`,
+		`;\s*kubectl\s+`,
 	}
 }
 

@@ -105,6 +105,11 @@ type ExecuteConfig struct {
 	// ReadOnlyRootfs makes the root filesystem read-only (Docker only)
 	ReadOnlyRootfs bool
 
+	// OutputDir is a writable directory for output files (Docker only)
+	// When set, this directory is mounted at /output inside the container.
+	// Use this for skills that need to write output files (e.g., mmdc rendering).
+	OutputDir string
+
 	// Stdin provides input to the script
 	Stdin string
 

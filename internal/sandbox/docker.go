@@ -141,12 +141,22 @@ func (s *DockerSandbox) buildDockerArgs(config *ExecuteConfig) []string {
 	}
 
 	// Security: disable privileged mode and limit PIDs
-	args = append(args, "--pids-limit", "100")
+	// Note: Chromium/mmdc rendering needs more PIDs, use higher limit when output dir is set
+	pidsLimit := 100
+	if config.OutputDir != "" {
+		pidsLimit = 512
+	}
+	args = append(args, "--pids-limit", fmt.Sprintf("%d", pidsLimit))
 	args = append(args, "--security-opt", "no-new-privileges")
 
 	// Mount the script and working directory as read-only
 	scriptDir := filepath.Dir(config.Script)
 	args = append(args, "-v", fmt.Sprintf("%s:/workspace:ro", scriptDir))
+
+	// Mount a writable output directory if specified (for mmdc rendering etc.)
+	if config.OutputDir != "" {
+		args = append(args, "-v", fmt.Sprintf("%s:/output", config.OutputDir))
+	}
 
 	// Working directory
 	args = append(args, "-w", "/workspace")

@@ -56,3 +56,7 @@ fix-docker.sh
 
 # WeChat Mini Program local/private configuration
 miniprogram/project.private.config.json
+
+go-install/
+
+skills/
