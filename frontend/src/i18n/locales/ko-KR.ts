@@ -1,9 +1,10 @@
 export default {
   menu: {
-    knowledgeBase: "지식베이스",
-    agents: "에이전트",
+    knowledgeBase: "개인 지식베이스",
+    agents: "기능 설정",
     organizations: "공유 스페이스",
-    chat: "대화",
+    chat: "작성 도우미",
+    pptGeneration: "PPT 생성",
     createChat: "대화 생성",
     tenant: "계정 정보",
     settings: "시스템 설정",
@@ -3279,6 +3280,10 @@ export default {
     default: "기본",
     withKnowledgeBase: "지식베이스",
     withWebSearch: "웹 검색",
+  },
+  pptGeneration: {
+    title: "PPT 생성",
+    description: "스마트 PPT 프레젠테이션 생성"
   },
   organization: {
     title: "공유 스페이스",

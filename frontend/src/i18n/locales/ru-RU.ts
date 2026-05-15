@@ -1,7 +1,8 @@
 export default {
   menu: {
-    knowledgeBase: 'База знаний',
-    chat: 'Диалог',
+    knowledgeBase: 'Личная база знаний',
+    chat: 'Помощник написания',
+    pptGeneration: 'Генерация PPT',
     createChat: 'Создать диалог',
     tenant: 'Информация об аккаунте',
     settings: 'Настройки системы',
@@ -24,7 +25,7 @@ export default {
     collapseSidebar: 'Свернуть боковую панель',
     expandSidebar: 'Развернуть боковую панель',
     logoutSuccess: 'Вы вышли из системы',
-    agents: 'Агенты',
+    agents: 'Конфигурация',
     organizations: 'Общие пространства'
   },
   batchManage: {
@@ -3763,6 +3764,10 @@ export default {
     default: 'Default',
     withKnowledgeBase: 'KB',
     withWebSearch: 'Web Search',
+  },
+  pptGeneration: {
+    title: 'Генерация PPT',
+    description: 'Интеллектуальная генерация презентаций PPT'
   },
   organization: {
     title: 'Shared Spaces',

@@ -140,6 +140,12 @@ const router = createRouter({
           component: () => import("../views/organization/OrganizationList.vue"),
           meta: { requiresInit: true, requiresAuth: true }
         },
+        {
+          path: "ppt-generation",
+          name: "pptGeneration",
+          component: () => import("../views/ppt/PptGeneration.vue"),
+          meta: { requiresInit: true, requiresAuth: true }
+        },
       ],
     },
     // Dev-only markdown rendering test page

@@ -1,9 +1,10 @@
 export default {
   menu: {
-    knowledgeBase: "知识库",
-    agents: "智能体",
+    knowledgeBase: "个人知识库",
+    agents: "功能配置",
     organizations: "共享空间",
-    chat: "对话",
+    chat: "写作助手",
+    pptGeneration: "PPT生成",
     createChat: "创建对话",
     tenant: "账户信息",
     settings: "系统设置",
@@ -3233,6 +3234,10 @@ export default {
     default: "默认",
     withKnowledgeBase: "知识库",
     withWebSearch: "网络搜索",
+  },
+  pptGeneration: {
+    title: "PPT生成",
+    description: "智能生成PPT演示文稿"
   },
   organization: {
     title: "共享空间",

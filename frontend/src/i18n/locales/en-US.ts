@@ -1,9 +1,10 @@
 export default {
   menu: {
-    knowledgeBase: 'Knowledge Base',
-    agents: 'Agents',
+    knowledgeBase: 'Personal Knowledge Base',
+    agents: 'Feature Config',
     organizations: 'Shared Spaces',
-    chat: 'Chat',
+    chat: 'Writing Assistant',
+    pptGeneration: 'PPT Generation',
     createChat: 'Create Chat',
     tenant: 'Account Info',
     settings: 'System Settings',
@@ -3237,6 +3238,10 @@ export default {
     default: 'Default',
     withKnowledgeBase: 'KB',
     withWebSearch: 'Web Search',
+  },
+  pptGeneration: {
+    title: 'PPT Generation',
+    description: 'Intelligently generate PPT presentations'
   },
   organization: {
     title: 'Shared Spaces',

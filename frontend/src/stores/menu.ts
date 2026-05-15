@@ -19,6 +19,7 @@ const createMenuChildren = () => reactive<MenuChild[]>([])
 export const useMenuStore = defineStore('menuStore', () => {
   const menuArr = reactive<MenuItem[]>([
     { title: '', titleKey: 'menu.knowledgeBase', icon: 'zhishiku', path: 'knowledge-bases' },
+    { title: '', titleKey: 'menu.pptGeneration', icon: 'ppt', path: 'ppt-generation' },
     { title: '', titleKey: 'menu.agents', icon: 'agent', path: 'agents' },
     { title: '', titleKey: 'menu.organizations', icon: 'organization', path: 'organizations' },
     {
@@ -58,14 +59,14 @@ export const useMenuStore = defineStore('menuStore', () => {
     }
   )
 
-  const liteHiddenPaths = new Set(['logout', 'organizations'])
+  const hiddenPaths = new Set(['logout', 'organizations'])
 
   const visibleMenuArr = computed(() => {
     const authStore = useAuthStore()
     if (authStore.isLiteMode) {
-      return menuArr.filter(item => !liteHiddenPaths.has(item.path))
+      return menuArr.filter(item => !hiddenPaths.has(item.path))
     }
-    return menuArr
+    return menuArr.filter(item => !hiddenPaths.has(item.path))
   })
 
   const chatMenuIndex = menuArr.findIndex(item => item.path === 'creatChat')
