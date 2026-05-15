@@ -5,46 +5,107 @@ description: 用于生成行业研究、技术分析、调研报告、竞品分�
 
 # Report Writing Skill
 
-## Core Principles
+## 1. 适用场景
+用于行业报告、问题分析、竞品对比、方案评估、研究结论、管理报告等需要“分析 + 结论 + 建议”的写作。
 
-- 信息密度优先
-- 逻辑清晰
-- 数据驱动
-- 避免空话
-- 结论明确
+## 2. 任务目标
+- 先给结论，再给依据
+- 用结构组织信息，而不是堆叠材料
+- 把“发现”写清楚，把“描述”压缩掉
+- 保留专业性，同时减少空话和模板味
 
----
+## 3. 输入理解
+优先判断用户是否在要以下内容之一：
+- 研究报告
+- 调研分析
+- 竞品对比
+- 问题诊断
+- 方案评估
+- 结果归纳
 
-## Default Report Structure
+如果用户没有明确结构，可直接采用默认报告结构。
 
+## 4. 输出模板
+### 默认报告结构
 1. Executive Summary
-2. Background
-3. Market / Technical Analysis
-4. Competitive Comparison
-5. Risks and Challenges
+2. Background / Scope
+3. Key Findings
+4. Analysis
+5. Risks / Constraints
 6. Recommendations
 7. Conclusion
 
----
+### 精简版结构
+1. 结论
+2. 关键发现
+3. 主要分析
+4. 建议
 
-## Writing Rules
+## 5. Hard Rules
+- 每个一级章节必须有明确观点
+- 每段只讲一个重点
+- 至少写出“结论—依据—影响”中的两项
+- 避免“随着……发展”“在当今时代”等空泛开头
+- 避免把原始材料直接拼接成段落
+- 如有数据，优先用数据解释结论
+- 若信息不足，明确标注“不足以判断”的部分
 
-- 每节必须有核心观点
-- 避免重复描述
-- 优先短段落
-- 控制 Bullet 数量
-- 强调“发现”而不是“描述”
+## 6. Examples
+### Example 1
+**User:** 写一份关于某 AI 产品市场机会的分析报告。  
+**Output:**  
+- 执行摘要：一句话结论  
+- 市场现状：规模、增长、竞争格局  
+- 机会判断：差异化空间与可进入性  
+- 风险：成本、合规、竞争  
+- 建议：优先市场、切入路径、验证方式
 
----
+### Example 2
+**User:** 对两种技术方案做对比分析。  
+**Output:**  
+- 对比维度：性能、成本、复杂度、扩展性  
+- 结论：推荐方案  
+- 依据：逐项解释为什么
 
-## Anti-AI Rules
-
-避免：
-- “随着人工智能的发展”
-- “在当今数字化时代”
-- “具有重要意义”
-
-优先：
-- 直接进入问题
-- 数据驱动表达
+## 7. Preferred Writing Style
+- 信息密度高
+- 表达直接
 - 结论前置
+- 适度使用小标题
+- 避免重复和陈词滥调
+
+
+## 8. Few-shot Examples
+
+### Few-shot 1 — 行业分析报告
+**User Request**
+写一份 AI Agent 行业趋势分析报告。
+
+**Expected Behavior**
+- 先给行业结论
+- 再拆增长驱动与风险
+- 最后给进入建议
+
+**Preferred Output Shape**
+1. 行业现状
+2. 增长驱动
+3. 竞争格局
+4. 风险
+5. 建议
+
+---
+
+### Few-shot 2 — 技术方案评估
+**User Request**
+比较方案 A 和方案 B 的优缺点。
+
+**Expected Behavior**
+- 用维度对比
+- 不写泛泛评价
+- 最后明确推荐
+
+**Preferred Dimensions**
+- 性能
+- 成本
+- 复杂度
+- 可维护性
