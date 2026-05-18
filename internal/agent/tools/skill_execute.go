@@ -28,6 +28,13 @@ var executeSkillScriptTool = BaseTool{
 - When automation or data processing is needed as part of skill workflow
 - For deterministic operations where script execution is more reliable than generating code
 
+## CRITICAL RESTRICTIONS
+- ONLY use this tool for skills that have script files. Check the skill category in the system prompt:
+  - "Skills with Script Support" — this tool can be used
+  - "Instruction-Only Skills" — do NOT use this tool, it will always fail
+- ONLY use script_path values that are explicitly listed in the "Available Files" section of read_skill output
+- Do NOT guess or invent script paths — they must come from read_skill's file listing
+
 ## Security
 - Scripts run in a sandboxed environment with limited permissions
 - Network access is disabled by default

@@ -5,6 +5,9 @@ export default {
     organizations: "共享空间",
     chat: "写作助手",
     pptGeneration: "PPT生成",
+    text2video: "文生视频",
+    excelProcess: "Excel处理",
+    docParser: "文档解析",
     createChat: "创建对话",
     tenant: "账户信息",
     settings: "系统设置",
@@ -3238,6 +3241,18 @@ export default {
   pptGeneration: {
     title: "PPT生成",
     description: "智能生成PPT演示文稿"
+  },
+  text2video: {
+    title: "文生视频",
+    description: "根据文本描述智能生成视频"
+  },
+  excelProcess: {
+    title: "Excel处理",
+    description: "智能处理Excel表格数据"
+  },
+  docParser: {
+    title: "文档解析",
+    description: "智能解析各类文档内容"
   },
   organization: {
     title: "共享空间",

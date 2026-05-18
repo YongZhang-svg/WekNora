@@ -3,6 +3,9 @@ export default {
     knowledgeBase: 'Личная база знаний',
     chat: 'Помощник написания',
     pptGeneration: 'Генерация PPT',
+    text2video: 'Текст в видео',
+    excelProcess: 'Обработка Excel',
+    docParser: 'Анализ документов',
     createChat: 'Создать диалог',
     tenant: 'Информация об аккаунте',
     settings: 'Настройки системы',
@@ -3768,6 +3771,18 @@ export default {
   pptGeneration: {
     title: 'Генерация PPT',
     description: 'Интеллектуальная генерация презентаций PPT'
+  },
+  text2video: {
+    title: 'Текст в видео',
+    description: 'Интеллектуальная генерация видео из текста'
+  },
+  excelProcess: {
+    title: 'Обработка Excel',
+    description: 'Интеллектуальная обработка данных Excel'
+  },
+  docParser: {
+    title: 'Анализ документов',
+    description: 'Интеллектуальный анализ содержимого документов'
   },
   organization: {
     title: 'Shared Spaces',

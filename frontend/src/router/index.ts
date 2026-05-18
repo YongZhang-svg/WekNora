@@ -146,6 +146,24 @@ const router = createRouter({
           component: () => import("../views/ppt/PptGeneration.vue"),
           meta: { requiresInit: true, requiresAuth: true }
         },
+        {
+          path: "text2video",
+          name: "text2video",
+          component: () => import("../views/text2video/Text2Video.vue"),
+          meta: { requiresInit: true, requiresAuth: true }
+        },
+        {
+          path: "excel-process",
+          name: "excelProcess",
+          component: () => import("../views/excel/ExcelProcess.vue"),
+          meta: { requiresInit: true, requiresAuth: true }
+        },
+        {
+          path: "doc-parser",
+          name: "docParser",
+          component: () => import("../views/docparser/DocParser.vue"),
+          meta: { requiresInit: true, requiresAuth: true }
+        },
       ],
     },
     // Dev-only markdown rendering test page

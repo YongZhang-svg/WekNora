@@ -46,6 +46,7 @@ type Skill struct {
 	// Instructions (Level 2) - loaded on demand
 	Instructions string // The main body of SKILL.md (after frontmatter)
 	Loaded       bool   // Whether Level 2 instructions have been loaded
+	HasScripts   bool   // Whether the skill directory contains executable script files
 }
 
 // SkillMetadata represents the minimal metadata for system prompt injection (Level 1)
@@ -54,6 +55,7 @@ type SkillMetadata struct {
 	Name        string
 	Description string
 	BasePath    string // Path to skill directory for later loading
+	HasScripts  bool   // Whether the skill directory contains executable script files
 }
 
 // SkillFile represents an additional file within a skill directory (Level 3)
@@ -105,6 +107,7 @@ func (s *Skill) ToMetadata() *SkillMetadata {
 		Name:        s.Name,
 		Description: s.Description,
 		BasePath:    s.BasePath,
+		HasScripts:  s.HasScripts,
 	}
 }
 

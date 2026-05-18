@@ -70,7 +70,7 @@
                      :class="['menu_item', item.childrenPath && item.childrenPath == currentpath ? 'menu_item_c_active' : isMenuItemActive(item.path) ? 'menu_item_active' : '']">
                     <div class="menu_item-box">
                         <div class="menu_icon">
-                            <img class="icon" :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'ppt' ? pptIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : prefixIcon)" alt="">
+                            <img class="icon" :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'ppt' ? pptIcon : item.icon == 'text2video' ? text2videoIcon : item.icon == 'excel' ? excelIcon : item.icon == 'docparser' ? docparserIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : prefixIcon)" alt="">
                         </div>
                         <template v-if="!uiStore.sidebarCollapsed">
                             <span class="menu_title" :title="item.title">{{ item.title }}</span>
@@ -150,8 +150,24 @@
         </div>
         
         
-        <!-- 下半部分：用户菜单 -->
+        <!-- 下半部分：底部菜单项 + 用户菜单 -->
         <div class="menu_bottom">
+            <div class="menu_box" v-for="(item, index) in bottomMenuItems" :key="'bottom-'+index">
+                <t-tooltip :content="item.title" placement="right" :disabled="!uiStore.sidebarCollapsed">
+                <div @click="handleMenuClick(item.path)"
+                    @mouseenter="mouseenteMenu(item.path)" @mouseleave="mouseleaveMenu(item.path)"
+                     :class="['menu_item', isMenuItemActive(item.path) ? 'menu_item_active' : '']">
+                    <div class="menu_item-box">
+                        <div class="menu_icon">
+                            <img class="icon" :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'ppt' ? pptIcon : item.icon == 'text2video' ? text2videoIcon : item.icon == 'excel' ? excelIcon : item.icon == 'docparser' ? docparserIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : prefixIcon)" alt="">
+                        </div>
+                        <template v-if="!uiStore.sidebarCollapsed">
+                            <span class="menu_title" :title="item.title">{{ item.title }}</span>
+                        </template>
+                    </div>
+                </div>
+                </t-tooltip>
+            </div>
             <UserMenu />
         </div>
 
@@ -293,6 +309,12 @@ const isMenuItemActive = (itemPath: string): boolean => {
             return currentRoute === 'organizationList';
         case 'ppt-generation':
             return currentRoute === 'pptGeneration';
+        case 'text2video':
+            return currentRoute === 'text2video';
+        case 'excel-process':
+            return currentRoute === 'excelProcess';
+        case 'doc-parser':
+            return currentRoute === 'docParser';
         case 'creatChat':
             return currentRoute === 'kbCreatChat' || currentRoute === 'globalCreatChat';
         case 'settings':
@@ -318,16 +340,16 @@ const getIconActiveState = (itemPath: string) => {
     };
 };
 
-// 分离上下两部分菜单（使用 visibleMenuArr 以便 lite 模式过滤 logout）
+// 分离上下两部分菜单：上半部分为业务工具，下半部分为配置/管理（功能配置、个人知识库等移至底部）
 const topMenuItems = computed<MenuItem[]>(() => {
     return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) =>
-        item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'organizations' || item.path === 'creatChat' || item.path === 'ppt-generation'
+        item.path === 'creatChat' || item.path === 'ppt-generation' || item.path === 'text2video' || item.path === 'excel-process' || item.path === 'doc-parser'
     );
 });
 
 const bottomMenuItems = computed<MenuItem[]>(() => {
     return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) => {
-        if (item.path === 'knowledge-bases' || item.path === 'agents' || item.path === 'organizations' || item.path === 'creatChat') {
+        if (item.path === 'creatChat' || item.path === 'ppt-generation' || item.path === 'text2video' || item.path === 'excel-process' || item.path === 'doc-parser') {
             return false;
         }
         return true;
@@ -756,6 +778,9 @@ let settingIcon = ref('setting.svg');
 let agentIcon = ref('agent.svg');
 let organizationIcon = ref('organization.svg');
 let pptIcon = ref('ppt.svg');
+let text2videoIcon = ref('text2video.svg');
+let excelIcon = ref('excel.svg');
+let docparserIcon = ref('docparser.svg');
 let pathPrefix = ref(route.name)
   const getIcon = (path: string) => {
       // 根据当前路由状态更新所有图标
@@ -777,6 +802,18 @@ let pathPrefix = ref(route.name)
       // PPT图标：只在PPT生成页面显示绿色
       const pptActiveState = route.name === 'pptGeneration';
       pptIcon.value = pptActiveState ? 'ppt-green.svg' : 'ppt.svg';
+
+      // 文生视频图标：只在文生视频页面显示绿色
+      const text2videoActiveState = route.name === 'text2video';
+      text2videoIcon.value = text2videoActiveState ? 'text2video-green.svg' : 'text2video.svg';
+
+      // Excel图标：只在Excel处理页面显示绿色
+      const excelActiveState = route.name === 'excelProcess';
+      excelIcon.value = excelActiveState ? 'excel-green.svg' : 'excel.svg';
+
+      // 文档解析图标：只在文档解析页面显示绿色
+      const docparserActiveState = route.name === 'docParser';
+      docparserIcon.value = docparserActiveState ? 'docparser-green.svg' : 'docparser.svg';
 
       // 对话图标：只在对话创建页面显示绿色，其他情况显示默认
       prefixIcon.value = creatChatActiveState.isCreatChatActive ? 'prefixIcon-green.svg' : 'prefixIcon.svg';
@@ -804,6 +841,12 @@ const handleMenuClick = async (path: string) => {
         router.push('/platform/organizations')
     } else if (path === 'ppt-generation') {
         router.push('/platform/ppt-generation')
+    } else if (path === 'text2video') {
+        router.push('/platform/text2video')
+    } else if (path === 'excel-process') {
+        router.push('/platform/excel-process')
+    } else if (path === 'doc-parser') {
+        router.push('/platform/doc-parser')
     } else if (path === 'settings') {
         // 设置菜单项：打开设置弹窗并跳转路由
         uiStore.openSettings()

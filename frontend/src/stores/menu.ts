@@ -18,10 +18,6 @@ const createMenuChildren = () => reactive<MenuChild[]>([])
 
 export const useMenuStore = defineStore('menuStore', () => {
   const menuArr = reactive<MenuItem[]>([
-    { title: '', titleKey: 'menu.knowledgeBase', icon: 'zhishiku', path: 'knowledge-bases' },
-    { title: '', titleKey: 'menu.pptGeneration', icon: 'ppt', path: 'ppt-generation' },
-    { title: '', titleKey: 'menu.agents', icon: 'agent', path: 'agents' },
-    { title: '', titleKey: 'menu.organizations', icon: 'organization', path: 'organizations' },
     {
       title: '',
       titleKey: 'menu.chat',
@@ -30,6 +26,13 @@ export const useMenuStore = defineStore('menuStore', () => {
       childrenPath: 'chat',
       children: createMenuChildren()
     },
+    { title: '', titleKey: 'menu.pptGeneration', icon: 'ppt', path: 'ppt-generation' },
+    { title: '', titleKey: 'menu.text2video', icon: 'text2video', path: 'text2video' },
+    { title: '', titleKey: 'menu.excelProcess', icon: 'excel', path: 'excel-process' },
+    { title: '', titleKey: 'menu.docParser', icon: 'docparser', path: 'doc-parser' },
+    { title: '', titleKey: 'menu.agents', icon: 'agent', path: 'agents' },
+    { title: '', titleKey: 'menu.knowledgeBase', icon: 'zhishiku', path: 'knowledge-bases' },
+    { title: '', titleKey: 'menu.organizations', icon: 'organization', path: 'organizations' },
     { title: '', titleKey: 'menu.settings', icon: 'setting', path: 'settings' },
     { title: '', titleKey: 'menu.logout', icon: 'logout', path: 'logout' }
   ])
@@ -59,7 +62,7 @@ export const useMenuStore = defineStore('menuStore', () => {
     }
   )
 
-  const hiddenPaths = new Set(['logout', 'organizations'])
+  const hiddenPaths = new Set(['logout', 'organizations', 'excel-process', 'settings'])
 
   const visibleMenuArr = computed(() => {
     const authStore = useAuthStore()

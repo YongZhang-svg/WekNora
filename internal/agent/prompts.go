@@ -230,17 +230,44 @@ func formatSkillsMetadata(skillsMetadata []*skills.SkillMetadata) string {
 
 	builder.WriteString("**⚠️ CRITICAL**: Skill usage is MANDATORY when applicable. Do NOT skip skills to save time or tokens.\n\n")
 
-	builder.WriteString("#### Available Skills\n\n")
-	for i, skill := range skillsMetadata {
-		builder.WriteString(fmt.Sprintf("%d. **%s**\n", i+1, skill.Name))
-		builder.WriteString(fmt.Sprintf("   %s\n\n", skill.Description))
+	// Separate skills into two categories: with scripts and instruction-only
+	var skillsWithScripts, instructionOnlySkills []*skills.SkillMetadata
+	for _, skill := range skillsMetadata {
+		if skill.HasScripts {
+			skillsWithScripts = append(skillsWithScripts, skill)
+		} else {
+			instructionOnlySkills = append(instructionOnlySkills, skill)
+		}
+	}
+
+	// List instruction-only skills first (majority of writing/guidance skills)
+	if len(instructionOnlySkills) > 0 {
+		builder.WriteString("#### Instruction-Only Skills (NO scripts available)\n\n")
+		for i, skill := range instructionOnlySkills {
+			builder.WriteString(fmt.Sprintf("%d. **%s**\n", i+1, skill.Name))
+			builder.WriteString(fmt.Sprintf("   %s\n\n", skill.Description))
+		}
+		builder.WriteString("**These skills provide writing guidelines only. Do NOT use `execute_skill_script` with them — they have no scripts and it will always fail.**\n\n")
+	}
+
+	// List skills with script support
+	if len(skillsWithScripts) > 0 {
+		builder.WriteString("#### Skills with Script Support\n\n")
+		for i, skill := range skillsWithScripts {
+			builder.WriteString(fmt.Sprintf("%d. **%s**\n", i+1, skill.Name))
+			builder.WriteString(fmt.Sprintf("   %s\n\n", skill.Description))
+		}
 	}
 
 	builder.WriteString("#### Tool Reference\n\n")
 	builder.WriteString("- `read_skill(skill_name)`: Load full skill instructions (MUST call before using a skill)\n")
-	builder.WriteString("- `execute_skill_script(skill_name, script_path, args, input)`: Run utility scripts bundled with a skill\n")
-	builder.WriteString("  - `input`: Pass data directly via stdin (use this when you have data in memory, e.g. JSON string)\n")
-	builder.WriteString("  - `args`: Command-line arguments (only use `--file` if you have an actual file path in the skill directory)\n")
+	if len(skillsWithScripts) > 0 {
+		builder.WriteString("- `execute_skill_script(skill_name, script_path, args, input)`: Run utility scripts bundled with a skill\n")
+		builder.WriteString("  - **ONLY for skills listed in \"Skills with Script Support\" above.** Instruction-only skills have NO scripts.\n")
+		builder.WriteString("  - `script_path` must be an exact path from the skill's Available Files list (e.g., `scripts/analyze.py`)\n")
+		builder.WriteString("  - `input`: Pass data directly via stdin (use this when you have data in memory, e.g. JSON string)\n")
+		builder.WriteString("  - `args`: Command-line arguments (only use `--file` if you have an actual file path in the skill directory)\n")
+	}
 
 	return builder.String()
 }

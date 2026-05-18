@@ -129,6 +129,13 @@ func (t *ReadSkillTool) Execute(ctx context.Context, args json.RawMessage) (*typ
 		builder.WriteString(skill.Instructions)
 
 		// Add available files section
+		scriptFiles := 0
+		for _, file := range files {
+			if file != skills.SkillFileName && skills.IsScript(file) {
+				scriptFiles++
+			}
+		}
+
 		if len(files) > 1 { // More than just SKILL.md
 			builder.WriteString("\n\n## Available Files\n\n")
 			builder.WriteString("The following files are available in this skill directory. Use `read_skill` with `file_path` to read them:\n\n")
@@ -141,6 +148,10 @@ func (t *ReadSkillTool) Execute(ctx context.Context, args json.RawMessage) (*typ
 					}
 				}
 			}
+		}
+
+		if scriptFiles == 0 {
+			builder.WriteString("\n\n**⚠️ IMPORTANT: This skill has NO executable scripts. Do NOT call `execute_skill_script` with this skill — it will always fail.**\n")
 		}
 
 		resultData["skill_name"] = skill.Name

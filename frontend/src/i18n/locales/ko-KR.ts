@@ -5,6 +5,9 @@ export default {
     organizations: "공유 스페이스",
     chat: "작성 도우미",
     pptGeneration: "PPT 생성",
+    text2video: "텍스트→비디오",
+    excelProcess: "Excel 처리",
+    docParser: "문서 분석",
     createChat: "대화 생성",
     tenant: "계정 정보",
     settings: "시스템 설정",
@@ -3284,6 +3287,18 @@ export default {
   pptGeneration: {
     title: "PPT 생성",
     description: "스마트 PPT 프레젠테이션 생성"
+  },
+  text2video: {
+    title: "텍스트→비디오",
+    description: "텍스트 설명으로 스마트 비디오 생성"
+  },
+  excelProcess: {
+    title: "Excel 처리",
+    description: "스마트 Excel 데이터 처리"
+  },
+  docParser: {
+    title: "문서 분석",
+    description: "스마트 문서 내용 분석"
   },
   organization: {
     title: "공유 스페이스",

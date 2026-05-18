@@ -94,6 +94,9 @@ func (l *Loader) discoverInDirectory(dir string) ([]*SkillMetadata, error) {
 		skill.BasePath = skillPath
 		skill.FilePath = skillFile
 
+		// Detect if skill has script files
+		skill.HasScripts = l.hasScriptFiles(skillPath)
+
 		// Cache the skill
 		l.discoveredSkills[skill.Name] = skill
 
@@ -299,6 +302,26 @@ func (l *Loader) GetSkillBasePath(skillName string) (string, error) {
 	}
 	// Return absolute path for consistent sandbox execution
 	return filepath.Abs(skill.BasePath)
+}
+
+// hasScriptFiles checks whether a skill directory contains any executable script files
+func (l *Loader) hasScriptFiles(skillPath string) bool {
+	found := false
+	filepath.Walk(skillPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		relPath, relErr := filepath.Rel(skillPath, path)
+		if relErr != nil {
+			return nil
+		}
+		if relPath != SkillFileName && IsScript(relPath) {
+			found = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // Reload clears the cache and rediscovers all skills

@@ -5,6 +5,9 @@ export default {
     organizations: 'Shared Spaces',
     chat: 'Writing Assistant',
     pptGeneration: 'PPT Generation',
+    text2video: 'Text to Video',
+    excelProcess: 'Excel Processing',
+    docParser: 'Document Parsing',
     createChat: 'Create Chat',
     tenant: 'Account Info',
     settings: 'System Settings',
@@ -3242,6 +3245,18 @@ export default {
   pptGeneration: {
     title: 'PPT Generation',
     description: 'Intelligently generate PPT presentations'
+  },
+  text2video: {
+    title: 'Text to Video',
+    description: 'Intelligently generate video from text'
+  },
+  excelProcess: {
+    title: 'Excel Processing',
+    description: 'Intelligently process Excel data'
+  },
+  docParser: {
+    title: 'Document Parsing',
+    description: 'Intelligently parse document content'
   },
   organization: {
     title: 'Shared Spaces',

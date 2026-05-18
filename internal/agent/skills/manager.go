@@ -195,7 +195,21 @@ func (m *Manager) ExecuteScript(ctx context.Context, skillName, scriptPath strin
 	// Load the script file to verify it exists and is a script
 	file, err := m.loader.LoadSkillFile(skillName, scriptPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load script: %w", err)
+		// Provide helpful error message listing available scripts
+		files, listErr := m.loader.ListSkillFiles(skillName)
+		if listErr != nil || len(files) == 0 {
+			return nil, fmt.Errorf("failed to load script: %w (this skill has no script files; use read_skill to confirm available files)", err)
+		}
+		var availableScripts []string
+		for _, f := range files {
+			if IsScript(f) {
+				availableScripts = append(availableScripts, f)
+			}
+		}
+		if len(availableScripts) == 0 {
+			return nil, fmt.Errorf("failed to load script: %w (this skill has no executable scripts; available files: %v)", err, files)
+		}
+		return nil, fmt.Errorf("failed to load script: %w (available scripts: %v — use one of these paths instead)", err, availableScripts)
 	}
 
 	if !file.IsScript {
