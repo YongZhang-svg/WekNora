@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
@@ -153,12 +154,17 @@ func (s *customAgentService) GetAgentByIDAndTenant(ctx context.Context, id strin
 	return agent, nil
 }
 
-// ListAgents lists all agents for the current tenant (including built-in agents)
+// ListAgents lists all agents for the current tenant (including built-in agents).
+// When the HIDE_ORIGINAL_BUILTIN_AGENTS environment variable is set to "true",
+// original (legacy) built-in agents are excluded from the result.
+// New built-in agents added after the feature are not affected.
 func (s *customAgentService) ListAgents(ctx context.Context) ([]*types.CustomAgent, error) {
 	tenantID, ok := types.TenantIDFromContext(ctx)
 	if !ok {
 		return nil, ErrInvalidTenantID
 	}
+
+	hideOriginalBuiltin := strings.EqualFold(os.Getenv("HIDE_ORIGINAL_BUILTIN_AGENTS"), "true")
 
 	// Get all agents from database (including built-in agents with customized config)
 	allAgents, err := s.repo.ListAgentsByTenantID(ctx, tenantID)
@@ -183,6 +189,10 @@ func (s *customAgentService) ListAgents(ctx context.Context) ([]*types.CustomAge
 
 	// Add built-in agents in order
 	for _, builtinID := range builtinIDs {
+		// Skip original built-in agents when HIDE_ORIGINAL_BUILTIN_AGENTS=true
+		if hideOriginalBuiltin && types.IsOriginalBuiltinAgentID(builtinID) {
+			continue
+		}
 		if builtinInDB[builtinID] {
 			// Use customized config from database
 			for _, agent := range allAgents {

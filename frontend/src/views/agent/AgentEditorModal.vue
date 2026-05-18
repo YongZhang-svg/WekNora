@@ -1512,12 +1512,6 @@ const defaultRerankThreshold = ref(0.5);
 const defaultMaxCompletionTokens = ref(2048);
 const defaultTemperature = ref(0.7);
 
-// 知识库相关工具列表（用于 watch(hasKnowledgeBase) 从"无"变"有"时 seed 默认工具）
-const knowledgeBaseTools = ['grep_chunks', 'knowledge_search', 'list_knowledge_chunks', 'query_knowledge_graph', 'get_document_info', 'database_query'];
-
-// Wiki 读取类工具（用于 watch(agentMode) 切到 smart-reasoning 时 seed 默认工具）
-const wikiReadTools = ['wiki_search', 'wiki_read_page', 'wiki_read_source_doc', 'wiki_flag_issue'];
-
 // 初始化标志，防止初始化时触发 watch 自动添加工具
 const isInitializing = ref(false);
 
@@ -1591,16 +1585,6 @@ const kbsInScope = computed(() => {
   if (kbSelectionMode.value === 'all') return kbOptions.value;
   const selectedIds = formData.value.config.knowledge_bases || [];
   return kbOptions.value.filter(kb => selectedIds.includes(kb.value));
-});
-
-// 是否存在至少一个启用了 RAG 能力的知识库（向量 or 关键词）
-const hasRagKnowledgeBase = computed(() => {
-  return kbsInScope.value.some(kb => kb.ragEnabled);
-});
-
-// 是否存在至少一个启用了 Wiki 能力的知识库
-const hasWikiKnowledgeBase = computed(() => {
-  return kbsInScope.value.some(kb => kb.wikiEnabled);
 });
 
 // 作用域内 RAG/Wiki 知识库数量（用于顶部状态栏）
@@ -1870,9 +1854,9 @@ const defaultFormData = {
     kb_selection_mode: 'all' as 'all' | 'selected' | 'none',
     knowledge_bases: [] as string[],
     retrieve_kb_only_when_mentioned: false,
-    // 智能推理下的类型预设：新建 agent 时默认给 RAG 问答（最常用场景）。
-    // 编辑既有 agent 时会被 agent 自己保存的 agent_type 覆盖。
-    agent_type: 'rag-qa' as AgentType,
+    // 智能推理下的类型预设：新建 agent 时默认为自定义（不自动启用任何工具），
+    // 用户可通过类型下拉选择预设（如 RAG Q&A）来快速配置工具和提示词。
+    agent_type: 'custom' as AgentType,
     system_prompt_id: '' as string,
     // 图片上传/多模态设置
     image_upload_enabled: false,
@@ -2295,22 +2279,15 @@ watch(() => props.visible, async (val) => {
       mcpSelectionMode.value = 'none';
       skillsSelectionMode.value = 'none';
 
-      // 新建智能推理 agent 时，立即应用默认的 agent_type 预设
-      // （补齐 system_prompt / allowed_tools / kb_selection_mode 等），
-      // 否则用户在 modal 打开瞬间看到的"默认表单"和类型下拉显示的类型不一致。
+      // 新建智能体时不再自动应用 agent_type 预设，保持 allowed_tools 为空。
+      // 用户可通过手动选择智能体类型来应用预设配置。
+      // 仅设置默认名称。
       if (newFormData.config.agent_mode === 'smart-reasoning') {
-        const defaultTypeId = newFormData.config.agent_type as AgentType;
-        const preset = agentTypePresets.value.find(p => p.id === defaultTypeId) || null;
-        if (defaultTypeId && defaultTypeId !== 'custom') {
-          applyAgentTypePreset(preset);
-        }
-        // 给新建表单补上"我的 XXX"默认名 + 预设描述，让用户可直接保存；
-        // 用户输入过的值不会被覆盖（此处是新建场景，字段必定为空）。
         if (!formData.value.name) {
-          formData.value.name = getPresetDefaultName(preset);
+          formData.value.name = getPresetDefaultName(null);
         }
         if (!formData.value.description) {
-          formData.value.description = getPresetDefaultDescription(preset);
+          formData.value.description = getPresetDefaultDescription(null);
         }
       }
     }
@@ -2433,26 +2410,8 @@ watch(skillsSelectionMode, (mode) => {
 // 监听模式变化，自动调整配置
 watch(agentMode, (val, _oldVal) => {
   if (val === 'smart-reasoning') {
-    // 切换到 Agent 模式，根据知识库配置启用工具。
-    // 注意：默认不注入 thinking / todo_write —— 它们用于显式反思或多步计划，
-    // 会显著增加 token 消耗，用户按需手动勾选。
-    if (formData.value.config.allowed_tools.length === 0) {
-      const tools: string[] = [];
-      if (hasRagKnowledgeBase.value) {
-        tools.push(
-          'knowledge_search',
-          'grep_chunks',
-          'list_knowledge_chunks',
-          'query_knowledge_graph',
-          'get_document_info',
-          'database_query',
-        );
-      }
-      if (hasWikiKnowledgeBase.value) {
-        tools.push(...wikiReadTools);
-      }
-      formData.value.config.allowed_tools = tools;
-    }
+    // 切换到 Agent 模式时，不再自动填充工具，保持默认为空。
+    // 用户可通过选择智能体类型预设（如 RAG Q&A）或手动勾选工具来启用。
     if (formData.value.config.max_iterations <= 1) {
       formData.value.config.max_iterations = 10;
     }
@@ -2494,27 +2453,13 @@ watch(agentMode, (val, _oldVal) => {
 });
 
 // 监听知识库启用状态变化：
-//   - 从"无"变"有"：自动补齐 RAG 基础工具，方便用户开箱即用（仅 seed 行为）；
-//   - 从"有"变"无"：**不再**自动擦工具，依赖不满足时由 `availableTools` 灰显
-//     + 运行时工具注册器过滤。`allowed_tools` 代表用户意图，只应在用户显式操作
-//     （切 agent_type / 切 agent_mode / 手勾工具）时变更。
-// 历史背景：旧版本在 KB 能力消失时会擦除 KB/Wiki 工具，导致用户切换
-// `kb_selection_mode` 到 "selected"、但尚未勾具体 KB 的过渡期里静默丢失工具，
-// 对默认工具全是 wiki_* 的内置"维基问答"智能体尤为致命。
-watch(hasKnowledgeBase, (hasKB, oldHasKB) => {
+//   - 工具的自动填充已移除，保持默认为空。
+//     用户可通过选择智能体类型预设或手动勾选工具来启用。
+//   - 仍然处理页面切换逻辑：如果没有知识库能力且在检索策略页面，切换到基础设置。
+watch(hasKnowledgeBase, (hasKB) => {
   // 如果当前在检索策略页面但没有知识库能力了，切换到基础设置
   if (!hasKB && currentSection.value === 'retrieval') {
     currentSection.value = 'basic';
-  }
-
-  // 初始化期间或非 Agent 模式下不自动调整工具
-  if (isInitializing.value || !isAgentMode.value) return;
-
-  if (hasKB && !oldHasKB) {
-    // 从无知识库变为有知识库，seed 默认的 RAG 工具（仅补齐未勾的）
-    const currentTools = formData.value.config.allowed_tools || [];
-    const toolsToAdd = knowledgeBaseTools.filter((tool: string) => !currentTools.includes(tool));
-    formData.value.config.allowed_tools = [...currentTools, ...toolsToAdd];
   }
 });
 

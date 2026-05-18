@@ -1,6 +1,6 @@
 ---
 
-name: mermaid-diagram
+name: mermaid-charts
 description: 使用 Mermaid 语法生成流程图、时序图、类图、状态图、ER 图、甘特图、饼图、思维导图、时间线、Git 图、桑基图、XY 图、块图、象限图和用户旅程图；适用于用户要求画图、导图、流程图、架构图、时序图、甘特图、数据关系图或需要输出 PNG、SVG、PDF、HTML 时。
 ---
 # Mermaid Diagram 画图技能

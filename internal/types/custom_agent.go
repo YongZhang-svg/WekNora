@@ -328,6 +328,30 @@ type SuggestedQuestion struct {
 // config/builtin_agents.yaml at startup via rebuildRegistryFromConfig.
 var BuiltinAgentRegistry = map[string]func(uint64) *CustomAgent{}
 
+// OriginalBuiltinAgentIDs records the IDs of built-in agents that existed before
+// the hide-original-builtin-agents feature was introduced. New built-in agents
+// added after this feature should NOT be added to this list, so they remain
+// visible even when HIDE_ORIGINAL_BUILTIN_AGENTS=true.
+//
+// This distinction allows the environment variable to hide only the "legacy"
+// built-in agents while keeping any newly added built-in agents visible by default.
+var OriginalBuiltinAgentIDs = map[string]bool{
+	BuiltinQuickAnswerID:           true,
+	BuiltinSmartReasoningID:        true,
+	BuiltinWikiResearcherID:        true,
+	BuiltinDeepResearcherID:        true,
+	BuiltinDataAnalystID:           true,
+	BuiltinKnowledgeGraphExpertID:  true,
+	BuiltinDocumentAssistantID:     true,
+}
+
+// IsOriginalBuiltinAgentID checks if the given ID is an original (legacy) built-in agent.
+// Original built-in agents can be hidden via the HIDE_ORIGINAL_BUILTIN_AGENTS env var,
+// while newly added built-in agents remain visible.
+func IsOriginalBuiltinAgentID(id string) bool {
+	return OriginalBuiltinAgentIDs[id]
+}
+
 // builtinAgentIDsOrdered defines the fixed display order of built-in agents
 // that are exposed in the user-facing agent list (ListAgents).
 //

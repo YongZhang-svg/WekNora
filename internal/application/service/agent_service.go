@@ -356,15 +356,23 @@ func (s *agentService) registerTools(
 	//   - We still *filter out* tools whose capability prerequisites are missing
 	//     (no KB in scope, no Wiki-capable KB, etc.) so the LLM can't call tools
 	//     that would error at runtime.
-	//   - Legacy agents without AllowedTools fall back to DefaultAllowedTools().
+	//   - Legacy agents with AllowedTools == nil (field absent in DB) fall back to
+	//     DefaultAllowedTools() for backward compatibility.
+	//   - New agents with AllowedTools == [] (explicitly empty) use no tools,
+	//     allowing users to create agents with no tools enabled by default.
 	var allowedTools []string
-	if len(config.AllowedTools) > 0 {
-		allowedTools = make([]string, len(config.AllowedTools))
-		copy(allowedTools, config.AllowedTools)
-		logger.Infof(ctx, "Using custom allowed tools from config: %v", allowedTools)
+	if config.AllowedTools != nil {
+		// Explicitly set (even if empty) — use as-is.
+		// An empty slice means the user intentionally selected no tools.
+		allowedTools = config.AllowedTools
+		if len(allowedTools) > 0 {
+			logger.Infof(ctx, "Using custom allowed tools from config: %v", allowedTools)
+		} else {
+			logger.Infof(ctx, "AllowedTools explicitly empty — no built-in tools registered")
+		}
 	} else {
 		allowedTools = tools.DefaultAllowedTools()
-		logger.Infof(ctx, "Using default allowed tools: %v", allowedTools)
+		logger.Infof(ctx, "Using default allowed tools (AllowedTools not set): %v", allowedTools)
 	}
 
 	// ---- Capability detection from SearchTargets ----
