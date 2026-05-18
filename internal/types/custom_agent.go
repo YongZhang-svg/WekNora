@@ -26,6 +26,20 @@ const (
 	BuiltinWikiResearcherID = "builtin-wiki-researcher"
 	// BuiltinWikiFixerID is the ID for the built-in wiki fixer agent
 	BuiltinWikiFixerID = "builtin-wiki-fixer"
+
+	// ---- New Writing Assistant Built-in Agents ----
+	// BuiltinPolishID is the ID for the built-in polish (rewrite & humanize) agent
+	BuiltinPolishID = "builtin-polish"
+	// BuiltinTechDocID is the ID for the built-in technical documentation agent
+	BuiltinTechDocID = "builtin-tech-doc"
+	// BuiltinReportID is the ID for the built-in research & analysis report agent
+	BuiltinReportID = "builtin-report"
+	// BuiltinBriefID is the ID for the built-in internal brief (weekly/monthly) agent
+	BuiltinBriefID = "builtin-brief"
+	// BuiltinMindmapID is the ID for the built-in mind map & diagram agent
+	BuiltinMindmapID = "builtin-mindmap"
+	// BuiltinUnlimitedID is the ID for the built-in unlimited writing agent
+	BuiltinUnlimitedID = "builtin-unlimited"
 )
 
 // AgentMode constants for agent running mode
@@ -336,13 +350,13 @@ var BuiltinAgentRegistry = map[string]func(uint64) *CustomAgent{}
 // This distinction allows the environment variable to hide only the "legacy"
 // built-in agents while keeping any newly added built-in agents visible by default.
 var OriginalBuiltinAgentIDs = map[string]bool{
-	BuiltinQuickAnswerID:           true,
-	BuiltinSmartReasoningID:        true,
-	BuiltinWikiResearcherID:        true,
-	BuiltinDeepResearcherID:        true,
-	BuiltinDataAnalystID:           true,
-	BuiltinKnowledgeGraphExpertID:  true,
-	BuiltinDocumentAssistantID:     true,
+	BuiltinQuickAnswerID:          true,
+	BuiltinSmartReasoningID:       true,
+	BuiltinWikiResearcherID:       true,
+	BuiltinDeepResearcherID:       true,
+	BuiltinDataAnalystID:          true,
+	BuiltinKnowledgeGraphExpertID: true,
+	BuiltinDocumentAssistantID:    true,
 }
 
 // IsOriginalBuiltinAgentID checks if the given ID is an original (legacy) built-in agent.
@@ -368,6 +382,13 @@ var builtinAgentIDsOrdered = []string{
 	BuiltinDataAnalystID,
 	BuiltinKnowledgeGraphExpertID,
 	BuiltinDocumentAssistantID,
+	// New writing assistants (not affected by HIDE_ORIGINAL_BUILTIN_AGENTS)
+	BuiltinPolishID,
+	BuiltinTechDocID,
+	BuiltinReportID,
+	BuiltinBriefID,
+	BuiltinMindmapID,
+	BuiltinUnlimitedID,
 }
 
 // GetBuiltinAgentIDs returns all built-in agent IDs in fixed order

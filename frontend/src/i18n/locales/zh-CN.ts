@@ -1233,8 +1233,8 @@ export default {
     toolFallback: "工具",
     stepsCompleted: "已完成 <strong>{steps}</strong> 个步骤",
     stepsCompletedWithDuration: "已完成 <strong>{steps}</strong> 个步骤，耗时 <strong>{duration}</strong>",
-    title: "智能体",
-    subtitle: "配置和管理您的智能体，自定义对话行为和能力",
+    title: "功能配置",
+    subtitle: "配置和管理您的Office办公助手，自定义Skills",
     createAgent: "创建智能体",
     createAgentShort: "新建",
     builtin: "内置",
@@ -2126,7 +2126,7 @@ export default {
     },
   },
   createChat: {
-    title: "基于知识库内容问答 - AI 问答",
+    title: "写作助手",
     newSessionTitle: "新会话",
     messages: {
       selectKnowledgeBase: "请先选择知识库",

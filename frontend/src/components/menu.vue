@@ -3,7 +3,9 @@
         <!-- 展开时：Logo + 折叠按钮同行 -->
         <div class="logo_row" v-if="!uiStore.sidebarCollapsed">
             <div class="logo_box" @click="router.push('/platform/knowledge-bases')" style="cursor: pointer;">
-                <img class="logo" src="@/assets/img/weknora.png" alt="">
+                <div class="logo_text">
+                    <span class="logo_text-main">个人</span><span class="logo_text-accent">Office</span><span class="logo_text-main">办公助手</span>
+                </div>
                 <sup v-if="isLiteEdition" class="lite-badge">Lite</sup>
             </div>
             <div class="sidebar-toggle"
@@ -984,9 +986,36 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
         min-width: 0;
         overflow: hidden;
 
-        .logo{
-            width: 134px;
-            height: auto;
+        .logo_text {
+            display: flex;
+            align-items: center;
+            font-family: "TencentSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            line-height: 1;
+            white-space: nowrap;
+            position: relative;
+
+            &::after {
+                content: '';
+                position: absolute;
+                bottom: -4px;
+                left: 0;
+                width: 100%;
+                height: 2px;
+                background: linear-gradient(90deg, var(--td-brand-color), #ed7b2f);
+                border-radius: 1px;
+            }
+
+            .logo_text-main {
+                color: var(--td-text-color-primary);
+            }
+
+            .logo_text-accent {
+                color: var(--td-brand-color);
+                font-family: "TencentSans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }
         }
         .lite-badge {
             margin-left: 2px;
@@ -1481,10 +1510,7 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
 }
 </style>
 <style lang="less">
-// Dark mode: invert dark logo to light
-html[theme-mode="dark"] .aside_box .logo_box .logo {
-    filter: invert(1) hue-rotate(180deg);
-}
+// Dark mode: text logo uses CSS variables so no inversion needed
 
 // Dark mode: make SVG icons match text color (loaded via <img>, currentColor won't work)
 html[theme-mode="dark"] .aside_box .menu_icon img.icon {

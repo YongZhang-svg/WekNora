@@ -14,7 +14,7 @@ import MentionSelector from './MentionSelector.vue';
 import AgentSelector from './AgentSelector.vue';
 import { getCaretCoordinates } from '@/utils/caret';
 import { listModels, type ModelConfig } from '@/api/model';
-import { listAgents, type CustomAgent, BUILTIN_QUICK_ANSWER_ID, BUILTIN_SMART_REASONING_ID } from '@/api/agent';
+import { listAgents, type CustomAgent, BUILTIN_QUICK_ANSWER_ID, BUILTIN_SMART_REASONING_ID, isBuiltinAgent } from '@/api/agent';
 import { listWebSearchProviders, type WebSearchProviderEntity } from '@/api/web-search-provider';
 import { getConversationConfig, updateConversationConfig, type ConversationConfig } from '@/api/system';
 import { useI18n } from 'vue-i18n';
@@ -386,6 +386,14 @@ const props = defineProps({
     required: false
   },
   embeddedMode: {
+    type: Boolean,
+    default: false
+  },
+  hideAgentSelector: {
+    type: Boolean,
+    default: false
+  },
+  hideWebSearch: {
     type: Boolean,
     default: false
   }
@@ -1517,7 +1525,9 @@ const createSession = async (val: string) => {
   // 发送前校验当前选中的智能体（含默认快速问答）是否已配置完成
   const agentToCheck = selectedAgent.value;
   let actualAgent = agentToCheck;
-  if (agentToCheck.is_builtin) {
+  // 所有 builtin- 开头的智能体统一视为内置智能体
+  const isBuiltinById = isBuiltinAgent(selectedAgentId.value);
+  if (agentToCheck.is_builtin || isBuiltinById) {
     let builtin = agents.value.find(a => a.id === selectedAgentId.value);
     if (!builtin) {
       await loadAgents();
@@ -1525,13 +1535,16 @@ const createSession = async (val: string) => {
     }
     actualAgent = builtin || agentToCheck;
   }
-  const isAgentMode = actualAgent.config?.agent_mode === 'smart-reasoning';
-  const notReadyReasons = actualAgent.is_builtin
-    ? getBuiltinAgentNotReadyReasons(actualAgent, isAgentMode)
-    : getCustomAgentNotReadyReasons(actualAgent);
-  if (notReadyReasons.length > 0) {
-    showAgentNotReadyMessage(actualAgent, notReadyReasons);
-    return;
+  // 内置智能体（ID 以 builtin- 开头或 is_builtin=true）跳过就绪检查，
+  // 由后端负责默认配置兜底
+  const shouldSkipReadinessCheck = actualAgent.is_builtin || isBuiltinById;
+  if (!shouldSkipReadinessCheck) {
+    const isAgentMode = actualAgent.config?.agent_mode === 'smart-reasoning';
+    const notReadyReasons = getCustomAgentNotReadyReasons(actualAgent);
+    if (notReadyReasons.length > 0) {
+      showAgentNotReadyMessage(actualAgent, notReadyReasons);
+      return;
+    }
   }
   // 获取@提及的知识库和文件信息
   const mentionedItems = allSelectedItems.value.map(item => ({
@@ -1668,16 +1681,7 @@ const toggleAgentModeSelector = () => {
 
 const selectAgentMode = (mode: 'quick-answer' | 'smart-reasoning') => {
   const builtinAgentId = mode === 'smart-reasoning' ? BUILTIN_SMART_REASONING_ID : BUILTIN_QUICK_ANSWER_ID;
-  const builtinAgent = agents.value.find(a => a.id === builtinAgentId);
-  
-  if (builtinAgent) {
-    const notReadyReasons = getBuiltinAgentNotReadyReasons(builtinAgent, mode === 'smart-reasoning');
-    if (notReadyReasons.length > 0) {
-      showAgentNotReadyMessage(builtinAgent, notReadyReasons);
-      showAgentModeSelector.value = false;
-      return;
-    }
-  }
+  // 内置智能体跳过就绪检查，由后端兜底默认配置
   
   const shouldEnableAgent = mode === 'smart-reasoning';
   if (shouldEnableAgent !== isAgentEnabled.value) {
@@ -1694,18 +1698,19 @@ const handleSelectAgent = (agent: CustomAgent, sourceTenantId?: string) => {
   // 根据智能体的 agent_mode 判断是否为 Agent 模式
   const isAgentType = agent.config?.agent_mode === 'smart-reasoning';
   
-  // 统一检查智能体是否就绪（内置和自定义智能体使用相同逻辑）
-  const actualAgent = agent.is_builtin 
+  // 统一检查智能体是否就绪
+  const actualAgent = (agent.is_builtin || isBuiltinAgent(agent.id))
     ? (agents.value.find(a => a.id === agent.id) || agent)
     : agent;
   
-  const notReadyReasons = agent.is_builtin
-    ? getBuiltinAgentNotReadyReasons(actualAgent, isAgentType)
-    : getCustomAgentNotReadyReasons(actualAgent);
-  
-  if (notReadyReasons.length > 0) {
-    showAgentNotReadyMessage(agent, notReadyReasons);
-    return;
+  // 内置智能体（ID 以 builtin- 开头或 is_builtin=true）跳过就绪检查
+  const shouldSkipReadinessCheck = actualAgent.is_builtin || isBuiltinAgent(agent.id);
+  if (!shouldSkipReadinessCheck) {
+    const notReadyReasons = getCustomAgentNotReadyReasons(actualAgent);
+    if (notReadyReasons.length > 0) {
+      showAgentNotReadyMessage(agent, notReadyReasons);
+      return;
+    }
   }
   
   settingsStore.selectAgent(agent.id, sourceTenantId);
@@ -1839,32 +1844,6 @@ const handleGoToAgentSettings = (section?: string) => {
     router.push('/platform/agents');
   }
 };
-
-// 获取内置智能体不就绪的原因
-const getBuiltinAgentNotReadyReasons = (agent: CustomAgent, isAgentMode: boolean): string[] => {
-  const reasons: string[] = []
-  const config = agent.config || {}
-  
-  // 内置智能体会自动回退到租户的默认模型，因此不再在前端强制校验 model_id
-  
-  // 检查重排模型（Rerank Model）- 仅当允许使用 knowledge_search 工具时需要
-  // 内置智能体允许重排模型为空（使用默认配置）
-  // const hasKnowledgeSearchTool = config.allowed_tools && config.allowed_tools.includes('knowledge_search')
-  // if (hasKnowledgeSearchTool) {
-  //   if (!config.rerank_model_id || config.rerank_model_id.trim() === '') {
-  //     reasons.push(t('input.customAgentMissingRerankModel'))
-  //   }
-  // }
-  
-  // Agent 模式还需要检查允许的工具
-  if (isAgentMode) {
-    if (!config.allowed_tools || config.allowed_tools.length === 0) {
-      reasons.push(t('input.agentMissingAllowedTools'))
-    }
-  }
-  
-  return reasons
-}
 
 // 获取自定义智能体不就绪的原因（非 Agent 模式，快速回答）
 const getCustomAgentNotReadyReasons = (agent: CustomAgent): string[] => {
@@ -2091,10 +2070,11 @@ defineExpose({
       <!-- 左侧控制按钮 -->
       <div class="control-left" v-if="!embeddedMode">
         <!-- Agent 模式切换按钮 -->
-        <div 
+        <div
+          v-if="!hideAgentSelector"
           ref="agentModeButtonRef"
           class="control-btn agent-mode-btn"
-          :class="{ 
+          :class="{
             'is-normal': !isCustomAgent && !isAgentEnabled,
             'is-agent': !isCustomAgent && isAgentEnabled,
             'is-custom': isCustomAgent
@@ -2104,10 +2084,10 @@ defineExpose({
           <span class="agent-mode-text">
             {{ selectedAgent.name || (isAgentEnabled ? $t('input.agentMode') : $t('input.normalMode')) }}
           </span>
-          <svg 
-            width="12" 
-            height="12" 
-            viewBox="0 0 12 12" 
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
             fill="currentColor"
             class="dropdown-arrow"
             :class="{ 'rotate': showAgentModeSelector }"
@@ -2116,8 +2096,16 @@ defineExpose({
           </svg>
         </div>
 
-        <!-- Agent 选择器下拉菜单 -->
+        <!-- Agent 只读标签（当选项卡选择智能体时，仅展示当前智能体名称） -->
+        <div v-if="hideAgentSelector" class="control-btn agent-mode-btn agent-mode-readonly">
+          <span class="agent-mode-text">
+            {{ selectedAgent.name || (isAgentEnabled ? $t('input.agentMode') : $t('input.normalMode')) }}
+          </span>
+        </div>
+
+        <!-- Agent 选择器下拉菜单（当选项卡选择智能体时隐藏） -->
         <AgentSelector
+          v-if="!hideAgentSelector"
           :visible="showAgentModeSelector"
           :anchorEl="agentModeButtonRef"
           :currentAgentId="selectedAgentId"
@@ -2126,8 +2114,8 @@ defineExpose({
           @select="handleSelectAgent"
         />
 
-        <!-- WebSearch 开关按钮 -->
-        <t-tooltip placement="top" theme="light" :popupProps="{ overlayClassName: 'input-field-tooltip' }">
+        <!-- WebSearch 开关按钮（当选项卡选择智能体时隐藏） -->
+        <t-tooltip v-if="!hideWebSearch" placement="top" theme="light" :popupProps="{ overlayClassName: 'input-field-tooltip' }">
           <template #content>
             <div v-if="isWebSearchDisabledByAgent" class="tooltip-with-link">
               <span>{{ $t('input.webSearchDisabledByAgent') }}</span>
@@ -2636,6 +2624,12 @@ const getImgSrc = (url: string) => {
   font-weight: 500;
   position: relative;
   border: .5px solid var(--td-component-border, #e7e7e7);
+
+  &.agent-mode-readonly {
+    cursor: default;
+    pointer-events: none;
+    opacity: 0.85;
+  }
 }
 
 .agent-icon {

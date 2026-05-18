@@ -233,3 +233,372 @@ builtin_agents:
       rerank_top_k: 10
       rerank_threshold: 0.3
 
+  # ============================================================================
+  # New Built-in Writing Assistants (not affected by HIDE_ORIGINAL_BUILTIN_AGENTS)
+  # ============================================================================
+
+  - id: "builtin-polish"
+    avatar: "✨"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Polish"
+        description: "Rewrite, polish, expand, compress, and humanize existing text"
+      zh-CN:
+        name: "润色"
+        description: "文本润色、改写、扩缩写及人性化处理"
+      zh-TW:
+        name: "潤色"
+        description: "文本潤色、改寫、擴縮寫及人性化處理"
+      ja-JP:
+        name: "推敲"
+        description: "テキストの推敲・書き直し・膨張・要約・自然化"
+      ko-KR:
+        name: "다듬기"
+        description: "텍스트 윤문, 재작성, 확장, 압축 및 자연스러운 표현"
+    config:
+      agent_mode: "smart-reasoning"
+      agent_type: "custom"
+      system_prompt_id: "writing_polish"
+      temperature: 0.3
+      max_completion_tokens: 2048
+      max_iterations: 10
+      kb_selection_mode: "all"
+      retrieve_kb_only_when_mentioned: false
+      retain_retrieval_history: true
+      allowed_tools:
+        - "final_answer"
+        - "wiki_search"
+        - "wiki_read_source_doc"
+        - "wiki_read_page"
+        - "wiki_flag_issue"
+        - "wiki_write_page"
+        - "wiki_rename_page"
+        - "wiki_replace_text"
+        - "wiki_delete_page"
+        - "wiki_read_issue"
+        - "wiki_update_issue"
+      skills_selection_mode: "selected"
+      selected_skills:
+        - "humanizer"
+        - "rewrite-polish"
+      web_search_enabled: false
+      web_search_max_results: 0
+      multi_turn_enabled: true
+      history_turns: 5
+      faq_priority_enabled: true
+      faq_direct_answer_threshold: 0.9
+      faq_score_boost: 1.2
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3
+
+  - id: "builtin-tech-doc"
+    avatar: "📄"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Technical Doc"
+        description: "Technical documentation, API docs, RFCs, and architecture specifications"
+      zh-CN:
+        name: "技术文档"
+        description: "技术文档、API 文档、RFC 及架构文档撰写"
+      zh-TW:
+        name: "技術文檔"
+        description: "技術文檔、API 文檔、RFC 及架構文檔撰寫"
+      ja-JP:
+        name: "技術ドキュメント"
+        description: "技術ドキュメント、API ドキュメント、RFC およびアーキテクチャ仕様書の作成"
+      ko-KR:
+        name: "기술 문서"
+        description: "기술 문서, API 문서, RFC 및 아키텍처 사양서 작성"
+    config:
+      agent_mode: "smart-reasoning"
+      agent_type: "custom"
+      system_prompt_id: "writing_tech_doc"
+      temperature: 0.3
+      max_completion_tokens: 2048
+      max_iterations: 10
+      kb_selection_mode: "all"
+      retrieve_kb_only_when_mentioned: false
+      retain_retrieval_history: true
+      allowed_tools:
+        - "final_answer"
+        - "wiki_search"
+        - "wiki_read_source_doc"
+        - "wiki_read_page"
+        - "wiki_flag_issue"
+        - "wiki_write_page"
+        - "wiki_rename_page"
+        - "wiki_replace_text"
+        - "wiki_delete_page"
+        - "wiki_read_issue"
+        - "wiki_update_issue"
+      skills_selection_mode: "selected"
+      selected_skills:
+        - "humanizer"
+        - "technical-writing"
+        - "rewrite-polish"
+        - "report-writing"
+      web_search_enabled: false
+      web_search_max_results: 0
+      multi_turn_enabled: true
+      history_turns: 5
+      faq_priority_enabled: true
+      faq_direct_answer_threshold: 0.9
+      faq_score_boost: 1.2
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3
+
+  - id: "builtin-report"
+    avatar: "📊"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Report"
+        description: "Research reports, industry analysis, competitive analysis, and strategic reports"
+      zh-CN:
+        name: "报告"
+        description: "研究报告、行业分析、竞争分析与战略报告"
+      zh-TW:
+        name: "報告"
+        description: "研究報告、行業分析、競爭分析與戰略報告"
+      ja-JP:
+        name: "レポート"
+        description: "調査レポート、業界分析、競合分析、戦略レポート"
+      ko-KR:
+        name: "보고서"
+        description: "연구 보고서, 산업 분석, 경쟁 분석 및 전략 보고서"
+    config:
+      agent_mode: "smart-reasoning"
+      agent_type: "custom"
+      system_prompt_id: "writing_report"
+      temperature: 0.3
+      max_completion_tokens: 2048
+      max_iterations: 10
+      kb_selection_mode: "all"
+      retrieve_kb_only_when_mentioned: false
+      retain_retrieval_history: true
+      allowed_tools:
+        - "final_answer"
+        - "wiki_search"
+        - "wiki_read_source_doc"
+        - "wiki_read_page"
+        - "wiki_flag_issue"
+        - "wiki_write_page"
+        - "wiki_rename_page"
+        - "wiki_replace_text"
+        - "wiki_delete_page"
+        - "wiki_read_issue"
+        - "wiki_update_issue"
+      skills_selection_mode: "selected"
+      selected_skills:
+        - "report-writing"
+        - "strategy-analysis"
+        - "executive-brief"
+        - "rewrite-polish"
+        - "humanizer"
+      web_search_enabled: false
+      web_search_max_results: 0
+      multi_turn_enabled: true
+      history_turns: 5
+      faq_priority_enabled: true
+      faq_direct_answer_threshold: 0.9
+      faq_score_boost: 1.2
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3
+
+  - id: "builtin-brief"
+    avatar: "📋"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Brief"
+        description: "Weekly reports, monthly reports, internal newsletters, and leadership updates"
+      zh-CN:
+        name: "汇报"
+        description: "周报、月报、内部通讯及管理层汇报"
+      zh-TW:
+        name: "匯報"
+        description: "週報、月報、內部通訊及管理層匯報"
+      ja-JP:
+        name: "報告"
+        description: "週報、月報、社内ニュース、マネジメント向け報告"
+      ko-KR:
+        name: "브리핑"
+        description: "주간 보고, 월간 보고, 사내 뉴스 및 경영진 브리핑"
+    config:
+      agent_mode: "smart-reasoning"
+      agent_type: "custom"
+      system_prompt_id: "writing_brief"
+      temperature: 0.3
+      max_completion_tokens: 2048
+      max_iterations: 10
+      kb_selection_mode: "all"
+      retrieve_kb_only_when_mentioned: false
+      retain_retrieval_history: true
+      allowed_tools:
+        - "final_answer"
+        - "wiki_search"
+        - "wiki_read_source_doc"
+        - "wiki_read_page"
+        - "wiki_flag_issue"
+        - "wiki_write_page"
+        - "wiki_rename_page"
+        - "wiki_replace_text"
+        - "wiki_delete_page"
+        - "wiki_read_issue"
+        - "wiki_update_issue"
+      skills_selection_mode: "selected"
+      selected_skills:
+        - "executive-brief"
+        - "newsletter-writing"
+        - "rewrite-polish"
+      web_search_enabled: false
+      web_search_max_results: 0
+      multi_turn_enabled: true
+      history_turns: 5
+      faq_priority_enabled: true
+      faq_direct_answer_threshold: 0.9
+      faq_score_boost: 1.2
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3
+
+  - id: "builtin-mindmap"
+    avatar: "🗺️"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Mind Map"
+        description: "Generate mind maps, flowcharts, architecture diagrams using Mermaid syntax"
+      zh-CN:
+        name: "思维导图"
+        description: "使用 Mermaid 语法生成流程图、思维导图、架构图等可视化结构"
+      zh-TW:
+        name: "思維導圖"
+        description: "使用 Mermaid 語法生成流程圖、思維導圖、架構圖等可視化結構"
+      ja-JP:
+        name: "マインドマップ"
+        description: "Mermaid 構文でマインドマップ、フローチャート、アーキテクチャ図を生成"
+      ko-KR:
+        name: "마인드맵"
+        description: "Mermaid 구문으로 마인드맵, 순서도, 아키텍처 다이어그램 생성"
+    config:
+      agent_mode: "smart-reasoning"
+      agent_type: "custom"
+      system_prompt_id: "writing_mindmap"
+      temperature: 0.7
+      max_completion_tokens: 2048
+      max_iterations: 30
+      kb_selection_mode: "all"
+      retrieve_kb_only_when_mentioned: false
+      retain_retrieval_history: true
+      allowed_tools:
+        - "final_answer"
+        - "wiki_search"
+        - "wiki_read_source_doc"
+        - "wiki_read_page"
+        - "wiki_flag_issue"
+        - "wiki_write_page"
+        - "wiki_rename_page"
+        - "wiki_replace_text"
+        - "wiki_delete_page"
+        - "wiki_read_issue"
+        - "wiki_update_issue"
+      skills_selection_mode: "selected"
+      selected_skills:
+        - "mermaid-diagram"
+        - "mermaid-charts"
+      web_search_enabled: false
+      web_search_max_results: 0
+      multi_turn_enabled: true
+      history_turns: 5
+      faq_priority_enabled: true
+      faq_direct_answer_threshold: 0.9
+      faq_score_boost: 1.2
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3
+
+  - id: "builtin-unlimited"
+    avatar: "🌐"
+    is_builtin: true
+    i18n:
+      default:
+        name: "Unlimited"
+        description: "General-purpose writing assistant with full skill set — reports, PPT, academic, gov, speech, and more"
+      zh-CN:
+        name: "不限"
+        description: "通用写作助手，支持检索、研究报告、PPT、公文、演讲稿等多种格式"
+      zh-TW:
+        name: "不限"
+        description: "通用寫作助手，支持檢索、研究報告、PPT、公文、演講稿等多種格式"
+      ja-JP:
+        name: "フリー"
+        description: "汎用ライティングアシスタント — レポート、PPT、学術、公文書、スピーチなど多様な形式に対応"
+      ko-KR:
+        name: "무제한"
+        description: "범용 글쓰기 도우미 — 보고서, PPT, 학술, 공문, 연설문 등 다양한 형식 지원"
+    config:
+      agent_mode: "smart-reasoning"
+      agent_type: "custom"
+      system_prompt_id: "writing_unlimited"
+      temperature: 0.7
+      max_completion_tokens: 2048
+      max_iterations: 30
+      kb_selection_mode: "all"
+      retrieve_kb_only_when_mentioned: false
+      retain_retrieval_history: true
+      allowed_tools:
+        - "final_answer"
+        - "wiki_search"
+        - "wiki_read_source_doc"
+        - "wiki_read_page"
+        - "wiki_flag_issue"
+        - "wiki_write_page"
+        - "wiki_rename_page"
+        - "wiki_replace_text"
+        - "wiki_delete_page"
+        - "wiki_read_issue"
+        - "wiki_update_issue"
+      skills_selection_mode: "selected"
+      selected_skills:
+        - "humanizer"
+        - "gov-writing"
+        - "academic-writing"
+        - "executive-brief"
+        - "meeting-summary"
+        - "newsletter-writing"
+        - "ppt-writing"
+        - "report-writing"
+        - "rewrite-polish"
+        - "speech-writing"
+        - "strategy-analysis"
+        - "technical-writing"
+        - "mermaid-diagram"
+        - "mermaid-charts"
+      web_search_enabled: false
+      web_search_max_results: 0
+      multi_turn_enabled: true
+      history_turns: 5
+      faq_priority_enabled: true
+      faq_direct_answer_threshold: 0.9
+      faq_score_boost: 1.2
+      embedding_top_k: 10
+      keyword_threshold: 0.3
+      vector_threshold: 0.5
+      rerank_top_k: 10
+      rerank_threshold: 0.3

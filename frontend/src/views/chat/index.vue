@@ -17,34 +17,6 @@
                         <t-skeleton animation="gradient" :row-col="[{ width: '70%', height: '16px' }, { width: '90%', height: '16px' }]" />
                     </div>
                 </div>
-                <!-- 推荐问题卡片 - 仅在新会话（无消息）时展示 -->
-                <div v-if="messagesList.length === 0 && !loading" class="suggested-questions-container" :class="{ 'has-questions': suggestedQuestions.length > 0 || suggestedQuestionsLoading }">
-                    <!-- 骨架屏占位 -->
-                    <div v-if="suggestedQuestionsLoading && suggestedQuestions.length === 0" class="suggested-questions-inner">
-                        <div class="suggested-questions-title"><t-skeleton animation="gradient" :row-col="[{ width: '120px', height: '18px' }]" /></div>
-                        <div class="suggested-questions-grid">
-                            <div v-for="n in 6" :key="'sq-skel-'+n" class="suggested-question-card sq-card-skeleton">
-                                <t-skeleton animation="gradient" :row-col="[{ width: '90%', height: '14px' }, { width: '60%', height: '14px' }]" />
-                            </div>
-                        </div>
-                    </div>
-                    <transition v-else appear name="sq-fade">
-                        <div v-if="suggestedQuestions.length > 0" class="suggested-questions-inner">
-                            <div class="suggested-questions-title">{{ t('chat.suggestedQuestions') }}</div>
-                            <div class="suggested-questions-grid">
-                                <div
-                                    v-for="(item, index) in suggestedQuestions"
-                                    :key="item.question"
-                                    class="suggested-question-card"
-                                    @click="handleSuggestedQuestionClick(item.question)"
-                                >
-                                    <span class="suggested-question-text">{{ item.question }}</span>
-                                    <span v-if="item.source === 'faq'" class="suggested-question-badge faq">FAQ</span>
-                                </div>
-                            </div>
-                        </div>
-                    </transition>
-                </div>
                 <div v-for="(session, id) in messagesList" :key='id'>
                     <div v-if="session.role == 'user'">
                         <usermsg :content="session.content" :mentioned_items="session.mentioned_items" :images="session.images" :attachments="session.attachments" :embeddedMode="embeddedMode"></usermsg>
@@ -70,6 +42,11 @@
             </div>
         </transition>
         <div class="input-container" :class="{ 'is-embedded': embeddedMode }">
+            <WritingAssistantTabs
+                v-if="!embeddedMode"
+                :activeAgentId="useSettingsStoreInstance.selectedAgentId"
+                @select="handleTabSelect"
+            />
             <InputField
                 ref="inputFieldRef"
                 @send-msg="(query, modelId, mentionedItems, imageFiles, attachmentFiles) => sendMsg(query, modelId, mentionedItems, imageFiles, attachmentFiles)"
@@ -78,6 +55,8 @@
                 :sessionId="session_id"
                 :assistantMessageId="currentAssistantMessageId"
                 :embeddedMode="embeddedMode"
+                :hideAgentSelector="!embeddedMode"
+                :hideWebSearch="!embeddedMode"
             ></InputField>
         </div>
     </div>
@@ -98,7 +77,7 @@ import InputField from '../../components/Input-field.vue';
 import botmsg from './components/botmsg.vue';
 import usermsg from './components/usermsg.vue';
 import { getMessageList, generateSessionsTitle, getSession } from "@/api/chat/index";
-import { getSuggestedQuestions } from "@/api/agent/index";
+import WritingAssistantTabs from '@/components/WritingAssistantTabs.vue';
 import { useStream } from '../../api/chat/streame'
 import { useMenuStore } from '@/stores/menu';
 import { useSettingsStore } from '@/stores/settings';
@@ -153,70 +132,10 @@ const handleKBEditorSuccess = (kbId) => {
     navigateToKnowledgeBaseList(kbId)
 }
 
-// ===== 推荐问题 =====
-const suggestedQuestions = ref([]);
-const suggestedQuestionsLoading = ref(false);
-let suggestedQuestionsFetchId = 0; // 用于取消过时的请求
-let suggestedDebounceTimer = null;
-
-const fetchSuggestedQuestions = async () => {
-    const fetchId = ++suggestedQuestionsFetchId;
-    suggestedQuestionsLoading.value = true;
-    // 加载期间保留旧数据，不清空，避免布局抖动
-    try {
-        const agentId = props.embeddedMode ? props.agentId : useSettingsStoreInstance.selectedAgentId;
-        if (!agentId) return;
-        const selectedKBs = props.embeddedMode ? props.kbIds : useSettingsStoreInstance.getSelectedKnowledgeBases();
-        const selectedFiles = props.embeddedMode ? [] : useSettingsStoreInstance.getSelectedFiles();
-        const res = await getSuggestedQuestions(agentId, {
-            knowledge_base_ids: selectedKBs.length > 0 ? selectedKBs : undefined,
-            knowledge_ids: selectedFiles.length > 0 ? selectedFiles : undefined,
-            limit: 6,
-        });
-        if (fetchId === suggestedQuestionsFetchId) {
-            suggestedQuestions.value = res?.data?.questions || [];
-        }
-    } catch (err) {
-        console.warn('[SuggestedQuestions] Failed to fetch:', err);
-        if (fetchId === suggestedQuestionsFetchId) {
-            suggestedQuestions.value = [];
-        }
-    } finally {
-        if (fetchId === suggestedQuestionsFetchId) {
-            suggestedQuestionsLoading.value = false;
-        }
-    }
+// 写作助手选项卡选择处理
+const handleTabSelect = (agentId) => {
+    useSettingsStoreInstance.selectAgent(agentId);
 };
-
-const handleSuggestedQuestionClick = (question) => {
-    if (inputFieldRef.value?.triggerSend) {
-        inputFieldRef.value.triggerSend(question);
-    } else {
-        sendMsg(question);
-    }
-};
-
-// 防抖包装，切换知识库/文件时300ms内不重复请求
-const debouncedFetchSuggestions = () => {
-    if (suggestedDebounceTimer) clearTimeout(suggestedDebounceTimer);
-    suggestedDebounceTimer = setTimeout(() => { fetchSuggestedQuestions(); }, 300);
-};
-
-// 监听 Agent / 知识库 / 文件切换，重新获取推荐问题
-watch(
-    () => useSettingsStoreInstance.selectedAgentId,
-    debouncedFetchSuggestions,
-);
-watch(
-    () => useSettingsStoreInstance.settings.selectedKnowledgeBases,
-    debouncedFetchSuggestions,
-    { deep: true },
-);
-watch(
-    () => useSettingsStoreInstance.settings.selectedFiles,
-    debouncedFetchSuggestions,
-    { deep: true },
-);
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -1250,9 +1169,6 @@ onMounted(async () => {
         }
         getmsgList(data)
     }
-
-    // 初始加载推荐问题
-    fetchSuggestedQuestions();
 })
 const clearData = () => {
     stopStream();
@@ -1492,95 +1408,6 @@ onBeforeRouteUpdate((to, from, next) => {
     }
     30% {
         transform: translateY(-8px);
-    }
-}
-
-.suggested-questions-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 32px 16px 16px;
-    max-width: 800px;
-    margin: 0 auto;
-    width: 100%;
-    min-height: 0;
-    transition: min-height 0.3s ease;
-
-    &.has-questions {
-        min-height: 80px;
-    }
-}
-
-.suggested-questions-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    animation: contentFadeIn 0.3s ease-out;
-}
-
-.sq-fade-enter-active,
-.sq-fade-leave-active {
-    transition: opacity 0.25s ease;
-}
-.sq-fade-enter-from,
-.sq-fade-leave-to {
-    opacity: 0;
-}
-
-.suggested-questions-title {
-    font-size: 14px;
-    color: var(--td-text-color-secondary);
-    margin-bottom: 16px;
-    font-weight: 500;
-}
-
-.suggested-questions-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    width: 100%;
-}
-
-.suggested-question-card {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
-    border-radius: 20px;
-    border: 1px solid var(--td-component-stroke);
-    background: var(--td-bg-color-container);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    max-width: 100%;
-
-    &:hover {
-        border-color: var(--td-brand-color);
-        background: var(--td-brand-color-light);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    }
-}
-
-.suggested-question-text {
-    font-size: 13px;
-    color: var(--td-text-color-primary);
-    line-height: 1.4;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.suggested-question-badge {
-    font-size: 10px;
-    padding: 1px 5px;
-    border-radius: 4px;
-    flex-shrink: 0;
-    font-weight: 500;
-
-    &.faq {
-        background: var(--td-success-color-1);
-        color: var(--td-success-color);
     }
 }
 </style>
