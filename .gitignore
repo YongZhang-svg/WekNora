@@ -61,3 +61,5 @@ go-install/
 
 logs*.txt
 
+log*
+
