@@ -62,7 +62,7 @@ export const useMenuStore = defineStore('menuStore', () => {
     }
   )
 
-  const hiddenPaths = new Set(['logout', 'organizations', 'excel-process', 'settings'])
+  const hiddenPaths = new Set(['logout', 'organizations', 'excel-process', 'settings', 'text2video', 'doc-parser'])
 
   const visibleMenuArr = computed(() => {
     const authStore = useAuthStore()

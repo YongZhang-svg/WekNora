@@ -7,7 +7,7 @@ export default {
     pptGeneration: "PPT生成",
     text2video: "文生视频",
     excelProcess: "Excel处理",
-    docParser: "文档解析",
+    docParser: "深度研究",
     createChat: "创建对话",
     tenant: "账户信息",
     settings: "系统设置",
@@ -3251,8 +3251,8 @@ export default {
     description: "智能处理Excel表格数据"
   },
   docParser: {
-    title: "文档解析",
-    description: "智能解析各类文档内容"
+    title: "深度研究",
+    description: "对复杂问题进行深度分析与研究"
   },
   organization: {
     title: "共享空间",

@@ -7,7 +7,7 @@ export default {
     pptGeneration: "PPT 생성",
     text2video: "텍스트→비디오",
     excelProcess: "Excel 처리",
-    docParser: "문서 분석",
+    docParser: "딥 리서치",
     createChat: "대화 생성",
     tenant: "계정 정보",
     settings: "시스템 설정",
@@ -3297,8 +3297,8 @@ export default {
     description: "스마트 Excel 데이터 처리"
   },
   docParser: {
-    title: "문서 분석",
-    description: "스마트 문서 내용 분석"
+    title: "딥 리서치",
+    description: "복잡한 주제에 대한 심층 분석 및 연구"
   },
   organization: {
     title: "공유 스페이스",

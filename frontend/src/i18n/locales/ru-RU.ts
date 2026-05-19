@@ -5,7 +5,7 @@ export default {
     pptGeneration: 'Генерация PPT',
     text2video: 'Текст в видео',
     excelProcess: 'Обработка Excel',
-    docParser: 'Анализ документов',
+    docParser: 'Глубокое исследование',
     createChat: 'Создать диалог',
     tenant: 'Информация об аккаунте',
     settings: 'Настройки системы',
@@ -3781,8 +3781,8 @@ export default {
     description: 'Интеллектуальная обработка данных Excel'
   },
   docParser: {
-    title: 'Анализ документов',
-    description: 'Интеллектуальный анализ содержимого документов'
+    title: 'Глубокое исследование',
+    description: 'Углублённый анализ и исследование сложных тем'
   },
   organization: {
     title: 'Shared Spaces',

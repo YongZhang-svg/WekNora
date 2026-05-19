@@ -7,7 +7,7 @@ export default {
     pptGeneration: 'PPT Generation',
     text2video: 'Text to Video',
     excelProcess: 'Excel Processing',
-    docParser: 'Document Parsing',
+    docParser: 'Deep Research',
     createChat: 'Create Chat',
     tenant: 'Account Info',
     settings: 'System Settings',
@@ -3255,8 +3255,8 @@ export default {
     description: 'Intelligently process Excel data'
   },
   docParser: {
-    title: 'Document Parsing',
-    description: 'Intelligently parse document content'
+    title: 'Deep Research',
+    description: 'In-depth analysis and research on complex topics'
   },
   organization: {
     title: 'Shared Spaces',
