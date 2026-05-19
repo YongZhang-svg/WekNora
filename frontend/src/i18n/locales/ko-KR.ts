@@ -2150,6 +2150,7 @@ export default {
   },
   createChat: {
     title: "지식베이스 기반 Q&A - AI Q&A",
+    customAgents: "사용자 정의 에이전트",
     newSessionTitle: "새 세션",
     messages: {
       selectKnowledgeBase: "먼저 지식베이스를 선택해주세요",

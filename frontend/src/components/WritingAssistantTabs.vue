@@ -21,16 +21,35 @@
       </div>
       <template #content>
         <div class="wa-tabs-dropdown">
-          <div
-            v-for="item in moreTabs"
-            :key="item.id"
-            class="wa-tabs-dropdown-item"
-            :class="{ 'wa-tabs-dropdown-item--active': activeAgentId === item.id }"
-            @click="handleMoreItemClick(item)"
-          >
-            <t-icon :name="item.icon" size="16px" class="wa-tabs-dropdown-item__icon" />
-            <span class="wa-tabs-dropdown-item__label">{{ item.label }}</span>
-          </div>
+          <!-- 内置智能体 -->
+          <template v-if="moreBuiltinTabs.length > 0">
+            <div
+              v-for="item in moreBuiltinTabs"
+              :key="item.id"
+              class="wa-tabs-dropdown-item"
+              :class="{ 'wa-tabs-dropdown-item--active': activeAgentId === item.id }"
+              @click="handleMoreItemClick(item)"
+            >
+              <t-icon :name="item.icon" size="16px" class="wa-tabs-dropdown-item__icon" />
+              <span class="wa-tabs-dropdown-item__label">{{ item.label }}</span>
+            </div>
+          </template>
+          <!-- 自定义智能体分组 -->
+          <template v-if="customAgentTabs.length > 0">
+            <div v-if="moreBuiltinTabs.length > 0" class="wa-tabs-dropdown-divider"></div>
+            <div class="wa-tabs-dropdown-group-title">{{ $t('createChat.customAgents') }}</div>
+            <div
+              v-for="item in customAgentTabs"
+              :key="item.id"
+              class="wa-tabs-dropdown-item"
+              :class="{ 'wa-tabs-dropdown-item--active': activeAgentId === item.id }"
+              @click="handleMoreItemClick(item)"
+            >
+              <span v-if="item.avatar" class="wa-tabs-dropdown-item__avatar">{{ item.avatar }}</span>
+              <t-icon v-else name="app" size="16px" class="wa-tabs-dropdown-item__icon" />
+              <span class="wa-tabs-dropdown-item__label">{{ item.label }}</span>
+            </div>
+          </template>
         </div>
       </template>
     </t-popup>
@@ -38,13 +57,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { Icon as TIcon, Popup as TPopup } from 'tdesign-vue-next';
+import { listAgents, type CustomAgent } from '@/api/agent';
 
 interface TabItem {
   id: string;
   label: string;
   icon: string;
+  avatar?: string;
 }
 
 const props = defineProps<{
@@ -55,6 +76,7 @@ const emit = defineEmits<{
   (e: 'select', agentId: string): void;
 }>();
 
+// 主选项卡（固定显示的内置智能体）
 const mainTabs: TabItem[] = [
   { id: 'builtin-unlimited', label: '不限', icon: 'chat' },
   { id: 'builtin-brief', label: '汇报', icon: 'chart-bar' },
@@ -62,14 +84,35 @@ const mainTabs: TabItem[] = [
   { id: 'builtin-polish', label: '润色', icon: 'edit-1' },
 ];
 
-const moreTabs: TabItem[] = [
+// "..."下拉中的内置智能体
+const moreBuiltinTabs: TabItem[] = [
   { id: 'builtin-mindmap', label: '思维导图', icon: 'root-list' },
   { id: 'builtin-report', label: '报告', icon: 'file-icon' },
 ];
 
+// 自定义智能体列表（从 API 加载）
+const customAgents = ref<CustomAgent[]>([]);
+
+// 将自定义智能体转换为 TabItem 格式
+const customAgentTabs = computed<TabItem[]>(() =>
+  customAgents.value.map(agent => ({
+    id: agent.id,
+    label: agent.name,
+    icon: 'app',
+    avatar: agent.avatar || undefined,
+  }))
+);
+
+// 所有更多下拉中的选项 ID 集合（内置 + 自定义）
+const moreTabIds = computed(() => {
+  const builtinIds = moreBuiltinTabs.map(t => t.id);
+  const customIds = customAgentTabs.value.map(t => t.id);
+  return [...builtinIds, ...customIds];
+});
+
 // 判断"..."选项卡是否高亮（当前选中项在下拉菜单中）
 const isMoreActive = computed(() => {
-  return moreTabs.some(item => item.id === props.activeAgentId);
+  return moreTabIds.value.includes(props.activeAgentId);
 });
 
 const handleTabClick = (tab: TabItem) => {
@@ -79,6 +122,22 @@ const handleTabClick = (tab: TabItem) => {
 const handleMoreItemClick = (item: TabItem) => {
   emit('select', item.id);
 };
+
+// 加载自定义智能体列表
+const loadCustomAgents = async () => {
+  try {
+    const res = await listAgents();
+    const data = (res as { data?: CustomAgent[] }).data || [];
+    // 只取自定义智能体（非内置）
+    customAgents.value = data.filter(a => !a.is_builtin);
+  } catch (error) {
+    console.error('Failed to load custom agents for WritingAssistantTabs:', error);
+  }
+};
+
+onMounted(() => {
+  loadCustomAgents();
+});
 </script>
 
 <style lang="less" scoped>
@@ -163,6 +222,19 @@ const handleMoreItemClick = (item: TabItem) => {
   min-width: 140px;
 }
 
+.wa-tabs-dropdown-divider {
+  height: 1px;
+  background: var(--td-component-stroke, #e7e9eb);
+  margin: 4px 8px;
+}
+
+.wa-tabs-dropdown-group-title {
+  font-size: 11px;
+  color: var(--td-text-color-placeholder, #999);
+  padding: 4px 12px 2px;
+  font-weight: 500;
+}
+
 .wa-tabs-dropdown-item {
   display: flex;
   align-items: center;
@@ -178,8 +250,21 @@ const handleMoreItemClick = (item: TabItem) => {
     color: var(--td-text-color-secondary, #666);
   }
 
+  &__avatar {
+    flex-shrink: 0;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   &__label {
     line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &:hover {

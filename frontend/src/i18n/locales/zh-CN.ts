@@ -2130,6 +2130,7 @@ export default {
   },
   createChat: {
     title: "写作助手",
+    customAgents: "自定义智能体",
     newSessionTitle: "新会话",
     messages: {
       selectKnowledgeBase: "请先选择知识库",

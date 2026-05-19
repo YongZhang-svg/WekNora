@@ -1533,6 +1533,7 @@ export default {
   },
   createChat: {
     title: 'Writing Assistant',
+    customAgents: 'Custom Agents',
     newSessionTitle: 'New Session',
     messages: {
       selectKnowledgeBase: 'Please select a knowledge base first',

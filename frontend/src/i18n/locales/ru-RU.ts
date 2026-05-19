@@ -1766,6 +1766,7 @@ export default {
   },
   createChat: {
     title: 'Вопросы и ответы на основе базы знаний — AI помощник',
+    customAgents: 'Пользовательские агенты',
     newSessionTitle: 'Новая сессия',
     messages: {
       selectKnowledgeBase: 'Сначала выберите базу знаний',
