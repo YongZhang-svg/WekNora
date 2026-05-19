@@ -15,7 +15,8 @@ tmp_dir = "tmp"
   # 使用 full_bin 来加载 .env 文件并设置本地开发环境变量
   # 直接运行 air 时不会自动加载 .env，导致 DB_DRIVER 等变量为空
   # 这里先 source .env，再覆盖本地开发地址（Docker 容器地址 -> localhost）
-  full_bin = "bash -c 'set -a && . ./.env && set +a && export DB_HOST=localhost DOCREADER_ADDR=localhost:50051 DOCREADER_TRANSPORT=grpc MINIO_ENDPOINT=localhost:9000 REDIS_ADDR=localhost:6379 NEO4J_URI=bolt://localhost:7687 QDRANT_HOST=localhost MILVUS_ADDRESS=localhost:19530 OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 && ./tmp/main'"
+  # 若 localhost:5432 不可达，则自动获取 Docker 容器 IP 直连 PostgreSQL
+  full_bin = "bash -c 'set -a && . ./.env && set +a && export DB_HOST=$(./scripts/get_db_host.sh) DOCREADER_ADDR=localhost:50051 DOCREADER_TRANSPORT=grpc MINIO_ENDPOINT=localhost:9000 REDIS_ADDR=localhost:6379 NEO4J_URI=bolt://localhost:7687 QDRANT_HOST=localhost MILVUS_ADDRESS=localhost:19530 OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 && ./tmp/main'"
   include_dir = []
   include_ext = ["go", "tpl", "tmpl", "html", "yaml"]
   include_file = []

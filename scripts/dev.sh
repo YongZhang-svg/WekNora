@@ -261,7 +261,23 @@ start_app() {
     fi
     
     # 设置本地开发环境变量（覆盖 Docker 容器地址）
-    export DB_HOST=localhost
+    # 尝试通过 localhost 端口映射连接 PostgreSQL；若失败则自动获取容器 IP
+    if command -v pg_isready &> /dev/null && pg_isready -h localhost -p ${DB_PORT:-15432} &> /dev/null; then
+        export DB_HOST=localhost
+        log_info "数据库连接: localhost:${DB_PORT:-15432}（端口映射模式）"
+    else
+        POSTGRES_CONTAINER_IP=$(docker inspect WeKnora-postgres-dev -f '{{(index .NetworkSettings.Networks "bridge").IPAddress}}' 2>/dev/null)
+        if [ -z "$POSTGRES_CONTAINER_IP" ]; then
+            POSTGRES_CONTAINER_IP=$(docker inspect WeKnora-postgres-dev -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null | head -1 | tr -d '[:space:]')
+        fi
+        if [ -n "$POSTGRES_CONTAINER_IP" ]; then
+            export DB_HOST="$POSTGRES_CONTAINER_IP"
+            log_warning "localhost:${DB_PORT:-15432} 不可达，使用容器直连: $DB_HOST:5432"
+        else
+            export DB_HOST=localhost
+            log_warning "无法获取 PostgreSQL 容器 IP，将使用 localhost（可能连接失败）"
+        fi
+    fi
     export DOCREADER_ADDR=localhost:50051
     export DOCREADER_TRANSPORT=grpc
     export MINIO_ENDPOINT=localhost:9000
