@@ -71,6 +71,8 @@
           <t-icon name="setting" class="menu-icon" />
           <span>{{ $t('general.allSettings') }}</span>
         </div>
+        <!-- Hidden: Claw Skill, Chrome Extension, Github menu items -->
+        <!--
         <div class="menu-divider"></div>
         <div class="menu-item" @click="openClawhubSkill">
           <span class="menu-icon menu-icon--emoji" role="img" :aria-label="$t('common.clawhubSkill')">🦞</span>
@@ -115,6 +117,7 @@
             </svg>
           </span>
         </div>
+        -->
         <template v-if="!authStore.isLiteMode">
           <div class="menu-divider"></div>
           <div class="menu-item danger" @click="handleLogout">
