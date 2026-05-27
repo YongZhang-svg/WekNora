@@ -52,12 +52,10 @@
     "vue-tsc": "^3.2.8"
   },
   "overrides": {
-    "lightningcss": "none",
     "esbuild": "^0.25.0",
     "serialize-javascript": "^7.0.3"
   },
   "resolutions": {
-    "lightningcss": "none",
     "esbuild": "^0.25.0",
     "serialize-javascript": "^7.0.3"
   }

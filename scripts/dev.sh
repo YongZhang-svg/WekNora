@@ -253,7 +253,7 @@ start_app() {
     if [ -f ".env" ]; then
         log_info "加载 .env 文件..."
         set -a
-        source .env
+        source <(sed 's/\r//' .env)
         set +a
     else
         log_error ".env 文件不存在，请先创建配置文件"

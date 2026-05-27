@@ -361,12 +361,13 @@ export const useSettingsStore = defineStore("settings", {
       this.settings.selectedAgentId = agentId;
       this.settings.selectedAgentSourceTenantId = (sourceTenantId != null && sourceTenantId !== "") ? sourceTenantId : null;
       // 根据智能体类型自动切换 Agent 模式
+      // quick-answer 强制关闭；其余所有智能体（builtin-smart-reasoning、builtin-unlimited
+      // 等 smart-reasoning 类型以及自定义智能体）均强制开启。
       if (agentId === BUILTIN_QUICK_ANSWER_ID) {
         this.settings.isAgentEnabled = false;
-      } else if (agentId === BUILTIN_SMART_REASONING_ID) {
+      } else {
         this.settings.isAgentEnabled = true;
       }
-      // 自定义智能体需要根据其配置来决定
       
       // 切换智能体时重置知识库和文件选择状态
       // 因为不同智能体关联的知识库不同，需要清空用户之前的选择

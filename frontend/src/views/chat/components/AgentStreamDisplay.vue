@@ -239,7 +239,53 @@
             v-if="event.content && event.content.trim()"
             class="answer-content markdown-content"
           >
-               <div v-html="renderAnswerContent(event.content)"></div>
+               <!-- 编辑模式 -->
+               <div v-if="isEditingAnswer === event.event_id" class="editing-container">
+                  <!-- 浮动格式化工具栏 -->
+                  <div
+                    v-if="showFloatingToolbar && activeToolbarEvent"
+                    class="floating-format-toolbar"
+                    @mousedown.stop
+                  >
+                    <span class="toolbar-group-label">标题</span>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('h1')" title="标题1">H1</button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('h2')" title="标题2">H2</button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('h3')" title="标题3">H3</button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('p')" title="正文">P</button>
+                    <span class="floating-toolbar-sep"></span>
+                    <span class="toolbar-group-label">样式</span>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('bold')" title="加粗"><b>B</b></button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('italic')" title="斜体"><i>I</i></button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('underline')" title="下划线"><u>U</u></button>
+                    <span class="floating-toolbar-sep"></span>
+                    <span class="toolbar-group-label">列表</span>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('insertUnorderedList')" title="无序列表">&#8226; L</button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('insertOrderedList')" title="有序列表">1. L</button>
+                    <span class="floating-toolbar-sep"></span>
+                    <span class="toolbar-group-label">对齐</span>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('justifyLeft')" title="左对齐">&#x21E6;</button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('justifyCenter')" title="居中">&#x21D4;</button>
+                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('justifyRight')" title="右对齐">&#x21E8;</button>
+                    <span class="floating-toolbar-sep"></span>
+                    <span class="toolbar-group-label">颜色</span>
+                    <div class="color-btn-wrapper" title="字体颜色（红色）" @mousedown.capture="saveSelectionBeforeColor" @click.stop="handleFgColorClick">
+                      <span class="color-btn-preview" :style="{ borderBottomColor: '#e74c3c' }">A</span>
+                    </div>
+                    <div class="color-btn-wrapper" title="背景颜色（黄色）" @mousedown.capture="saveSelectionBeforeColor" @click.stop="handleBgColorClick">
+                      <span class="color-btn-preview bg-preview" :style="{ backgroundColor: '#f1c40f' }">A</span>
+                    </div>
+                  </div>
+                  <div 
+                    :ref="el => setEditableRef(event.event_id, el)"
+                    class="editable-answer-content markdown-content"
+                    contenteditable="true"
+                    @input="handleAnswerContentEdit(event, $event)"
+                    @mouseup="onEditableMouseUp(event, $event)"
+                    @keyup="onEditableKeyUp(event, $event)"
+                  ></div>
+               </div>
+               <!-- 只读模式 -->
+               <div v-else v-html="renderAnswerContent(event.content)"></div>
           </div>
           <div v-if="event.done && event.content && event.content.trim()" class="answer-toolbar">
             <t-button size="small" variant="outline" shape="round" @click.stop="handleCopyAnswer(event)" :title="$t('agent.copy')">
@@ -247,6 +293,12 @@
             </t-button>
             <t-button size="small" variant="outline" shape="round" @click.stop="handleAddToKnowledge(event)" :title="$t('agent.addToKnowledgeBase')">
               <t-icon name="add" />
+            </t-button>
+            <t-button size="small" variant="outline" shape="round" @click.stop="handleToggleAnswerEdit(event)" :title="isEditingAnswer === event.event_id ? '保存' : '编辑'">
+              <t-icon :name="isEditingAnswer === event.event_id ? 'check' : 'edit-2'" />
+            </t-button>
+            <t-button size="small" variant="outline" shape="round" @click.stop="handleExportWord(event)" title="导出 Word">
+              <t-icon name="download" />
             </t-button>
             <t-tooltip v-if="event.is_fallback" :content="$t('chat.fallbackHint')" placement="top">
               <t-button size="small" variant="outline" shape="round" class="fallback-icon-btn">
@@ -438,7 +490,166 @@ const settingsStore = useSettingsStore();
 const authStore = useAuthStore();
 const { t } = useI18n();
 
-ensureMermaidInitialized();
+// 编辑模式状态
+const isEditingAnswer = ref<string | number | null>(null);
+const editableElements = ref<Record<string, HTMLElement>>({});
+
+// 浮动工具栏状态
+const showFloatingToolbar = ref(false);
+const activeToolbarEvent = ref<any>(null);
+
+const onEditableMouseUp = (event: any, evt: MouseEvent) => {
+  if (isEditingAnswer.value === event.event_id) {
+    activeToolbarEvent.value = event;
+    showFloatingToolbar.value = true;
+  }
+};
+
+const onEditableKeyUp = (event: any, evt: KeyboardEvent) => {
+  if (isEditingAnswer.value === event.event_id) {
+    activeToolbarEvent.value = event;
+    showFloatingToolbar.value = true;
+  }
+};
+
+const hideFloatingToolbar = () => {
+  showFloatingToolbar.value = false;
+  activeToolbarEvent.value = null;
+};
+
+const handleToolbarCmd = (command: string) => {
+  if (activeToolbarEvent.value) {
+    formatAgentText(activeToolbarEvent.value, command);
+  }
+};
+
+const handleFgColorClick = () => {
+  if (!activeToolbarEvent.value) return;
+  const el = editableElements.value[activeToolbarEvent.value.event_id];
+  if (!el) return;
+
+  restoreSelectionForColor();
+
+  // 检测选中文本是否全部为红色 → 切换为黑色，否则设为红色
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed) {
+    let allRed = true;
+    let hasText = false;
+    const range = sel.getRangeAt(0);
+    const iter = document.createNodeIterator(
+      range.commonAncestorContainer,
+      NodeFilter.SHOW_TEXT
+    );
+    let node;
+    while ((node = iter.nextNode())) {
+      if (range.intersectsNode(node) && node.textContent && node.textContent.trim()) {
+        hasText = true;
+        const parent = node.parentElement;
+        if (parent) {
+          if (getComputedStyle(parent).color !== 'rgb(231, 76, 60)') {
+            allRed = false;
+            break;
+          }
+        } else {
+          allRed = false;
+          break;
+        }
+      }
+    }
+    if (!hasText) allRed = false;
+    document.execCommand('foreColor', false, allRed ? '#000000' : '#e74c3c');
+  } else {
+    document.execCommand('foreColor', false, '#e74c3c');
+  }
+
+  activeToolbarEvent.value.content = el.innerHTML;
+};
+
+const handleBgColorClick = () => {
+  if (!activeToolbarEvent.value) return;
+  const el = editableElements.value[activeToolbarEvent.value.event_id];
+  if (!el) return;
+
+  restoreSelectionForColor();
+
+  // 检测选中文本背景是否全部为黄色 → 清除高亮，否则设为黄色
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed) {
+    let allYellow = true;
+    let hasText = false;
+    const range = sel.getRangeAt(0);
+    const iter = document.createNodeIterator(
+      range.commonAncestorContainer,
+      NodeFilter.SHOW_TEXT
+    );
+    let node;
+    while ((node = iter.nextNode())) {
+      if (range.intersectsNode(node) && node.textContent && node.textContent.trim()) {
+        hasText = true;
+        const parent = node.parentElement;
+        if (parent) {
+          if (getComputedStyle(parent).backgroundColor !== 'rgb(241, 196, 15)') {
+            allYellow = false;
+            break;
+          }
+        } else {
+          allYellow = false;
+          break;
+        }
+      }
+    }
+    if (!hasText) allYellow = false;
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('hiliteColor', false, allYellow ? 'transparent' : '#f1c40f');
+  } else {
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('hiliteColor', false, '#f1c40f');
+  }
+
+  activeToolbarEvent.value.content = el.innerHTML;
+};
+
+// 颜色选取前保存选区（在 mousedown 阶段保存，避免颜色弹窗清空选区）
+const savedSelectionForColor = ref<{ node: Node; startOffset: number; endOffset: number; startContainer: Node; endContainer: Node } | null>(null);
+
+const saveSelectionBeforeColor = () => {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    savedSelectionForColor.value = {
+      node: range.commonAncestorContainer,
+      startContainer: range.startContainer,
+      startOffset: range.startOffset,
+      endContainer: range.endContainer,
+      endOffset: range.endOffset,
+    };
+  }
+};
+
+const restoreSelectionForColor = () => {
+  const el = activeToolbarEvent.value ? editableElements.value[activeToolbarEvent.value.event_id] : null;
+  if (!el) return;
+  
+  el.focus();
+  
+  const saved = savedSelectionForColor.value;
+  if (saved) {
+    try {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.setStart(saved.startContainer, saved.startOffset);
+      range.setEnd(saved.endContainer, saved.endOffset);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    } catch(e) {
+      // 选区可能已失效
+    }
+  }
+};
+
+onMounted(() => {
+  ensureMermaidInitialized();
+});
 
 // DOMPurify 配置 - 支持 Mermaid SVG 标签
 const DOMPurifyConfig = {
@@ -2345,6 +2556,171 @@ const handleAddToKnowledge = (answerEvent: any) => {
 
   MessagePlugin.info(t('agentStream.saveToKb.editorOpened'));
 };
+
+// 切换答案编辑模式
+const handleToggleAnswerEdit = (answerEvent: any) => {
+  if (isEditingAnswer.value === answerEvent.event_id) {
+    // 保存编辑
+    isEditingAnswer.value = null;
+    hideFloatingToolbar();
+    MessagePlugin.success('内容已保存');
+  } else {
+    // 进入编辑模式
+    isEditingAnswer.value = answerEvent.event_id;
+    // 等待 DOM 更新后设置初始内容并显示工具栏
+    nextTick(() => {
+      const el = editableElements.value[answerEvent.event_id];
+      if (el) {
+        el.innerHTML = answerEvent.content || '';
+      }
+      activeToolbarEvent.value = answerEvent;
+      showFloatingToolbar.value = true;
+    });
+    MessagePlugin.info('进入编辑模式，点击内容即可编辑');
+  }
+};
+
+// 设置可编辑元素引用
+const setEditableRef = (eventId: string | number, el: any) => {
+  if (el) {
+    editableElements.value[eventId] = el as HTMLElement;
+  }
+};
+
+// 处理答案内容编辑
+const handleAnswerContentEdit = (answerEvent: any, event: Event) => {
+  const target = event.target as HTMLElement;
+  answerEvent.content = target.innerHTML;
+};
+
+// 格式化文本（工具栏按钮调用）
+const formatAgentText = (answerEvent: any, command: string = 'h1', value?: string) => {
+  const el = editableElements.value[answerEvent.event_id];
+  if (!el) return;
+  
+  el.focus();
+  
+  // 映射命令
+  const commandMap: Record<string, string> = {
+    'h1': 'formatBlock',
+    'h2': 'formatBlock',
+    'h3': 'formatBlock',
+    'p': 'formatBlock',
+    'bold': 'bold',
+    'italic': 'italic',
+    'underline': 'underline',
+    'insertUnorderedList': 'insertUnorderedList',
+    'insertOrderedList': 'insertOrderedList',
+    'foreColor': 'foreColor',
+    'hiliteColor': 'hiliteColor',
+    'justifyLeft': 'justifyLeft',
+    'justifyCenter': 'justifyCenter',
+    'justifyRight': 'justifyRight'
+  };
+  
+  const valueMap: Record<string, string> = {
+    'h1': '<h1>',
+    'h2': '<h2>',
+    'h3': '<h3>',
+    'p': '<p>'
+  };
+  
+  const execCommand = commandMap[command];
+  if (execCommand) {
+    const execValue = value !== undefined ? value : (valueMap[command] || '');
+    document.execCommand(execCommand, false, execValue);
+  }
+  
+  // 更新内容
+  answerEvent.content = el.innerHTML;
+};
+
+const handleExportWord = (answerEvent: any) => {
+  const content = getActualContent(answerEvent);
+  if (!content) {
+    MessagePlugin.warning(t('agentStream.copy.emptyContent'));
+    return;
+  }
+
+  const title = 'AI回复内容';
+  
+  // 判断内容是否为 HTML 格式
+  const isHTML = /<(h[1-6]|p|ul|ol|li|strong|em|b|i|div|table|tr|td|th|br)[\s>]/i.test(content);
+  
+  let bodyContent;
+  if (isHTML) {
+    // 如果已经是 HTML 格式，直接使用，但清理空标签
+    bodyContent = content
+      // 移除空的段落标签
+      .replace(/<p>\s*<\/p>/gi, '')
+      // 移除空的列表项
+      .replace(/<li>\s*<\/li>/gi, '')
+      // 移除只有空白字符和换行符的 div
+      .replace(/<div>\s*<\/div>/gi, '')
+      // 移除连续的空行（多个 <br>）
+      .replace(/(<br\s*\/?>\s*){3,}/gi, '<br/><br/>')
+      // 清理标签内多余空白
+      .replace(/>\s+</g, '><');
+  } else {
+    // 如果是 Markdown/纯文本，转换为简单 HTML，去掉空行
+    bodyContent = `<div>${content
+      .split('\n')
+      .filter(line => line.trim() !== '')  // 过滤空行
+      .join('<br/>')}</div>`;
+  }
+  
+  const fullHtml = `<!DOCTYPE html>
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+<head><meta charset="utf-8"><title>${title}</title>
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<style>
+@page Section1 {
+  size: 595.3pt 841.9pt;
+  margin: 72.0pt 72.0pt 72.0pt 72.0pt;
+  mso-page-orientation: portrait;
+}
+div.Section1 { page: Section1; }
+</style>
+<![endif]-->
+<style>
+body{font-family:SimSun,'宋体',serif;font-size:12pt;color:#000;word-wrap:break-word;overflow-wrap:break-word;}
+p{margin:0 0 6pt 0;line-height:1.5;text-indent:2em;text-indent:24pt;}
+h1{font-size:20pt;font-weight:bold;margin:12pt 0 8pt 0;text-align:center;}
+h2{font-size:16pt;font-weight:bold;margin:10pt 0 6pt 0;text-indent:0;}
+h3{font-size:14pt;font-weight:bold;margin:8pt 0 4pt 0;text-indent:0;}
+ul,ol{margin:4pt 0;padding-left:40pt;}
+li{margin:2pt 0;line-height:1.5;text-indent:2em;list-style-position:outside;}
+ul ul,ol ol,ul ol,ol ul{margin:2pt 0;padding-left:36pt;}
+li ul,li ol{margin:2pt 0;}
+strong,b{font-weight:bold;}
+em,i{font-style:italic;}
+table{border-collapse:collapse;margin:8pt 0;width:100%;word-wrap:break-word;overflow-wrap:break-word;}
+th,td{border:1px solid #000;padding:6pt 8pt;text-align:left;word-wrap:break-word;overflow-wrap:break-word;}
+th{background:#f0f0f0;font-weight:bold;}
+</style>
+</head>
+<body>
+<div class="Section1">
+${bodyContent}
+</div>
+</body></html>`;
+  
+  const blob = new Blob([fullHtml], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  MessagePlugin.success('Word 导出成功');
+};
 </script>
 
 <style lang="less" scoped>
@@ -2664,6 +3040,141 @@ const handleAddToKnowledge = (answerEvent: any) => {
           height: auto;
         }
       }
+    }
+  }
+  
+  .editing-container {
+    margin-bottom: 12px;
+  }
+
+  .floating-format-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    background: var(--td-bg-color-secondarycontainer);
+    border: 1px solid var(--td-component-border);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    pointer-events: auto;
+  }
+
+  .toolbar-group-label {
+    font-size: 11px;
+    color: var(--td-text-color-placeholder);
+    margin-right: 2px;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .floating-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 28px;
+    padding: 0 7px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--td-text-color-primary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    
+    &:hover {
+      background: var(--td-bg-color-container);
+      color: var(--td-brand-color);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    
+    &:active {
+      background: var(--td-bg-color-component-active);
+      transform: scale(0.95);
+    }
+
+    b, i, u {
+      pointer-events: none;
+    }
+  }
+
+  .floating-toolbar-sep {
+    width: 1px;
+    height: 20px;
+    margin: 0 5px;
+    background: var(--td-component-stroke);
+    flex-shrink: 0;
+  }
+
+  .color-btn-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--td-bg-color-container);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    &:active {
+      background: var(--td-bg-color-component-active);
+      transform: scale(0.95);
+    }
+  }
+
+  .color-btn-preview {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    padding-bottom: 2px;
+    border-bottom: 2.5px solid #e74c3c;
+    pointer-events: none;
+  }
+
+  .color-btn-preview.bg-preview {
+    border-bottom: none;
+    padding: 0 3px;
+    border-radius: 2px;
+    background-color: #f1c40f;
+  }
+
+  .editable-answer-content {
+    font-size: 15px;
+    color: var(--td-text-color-primary);
+    line-height: 1.6;
+    min-height: 100px;
+    padding: 12px;
+    border: 2px solid var(--td-brand-color);
+    border-radius: 6px;
+    background: var(--td-bg-color-container);
+    outline: none;
+    cursor: text;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      border-color: var(--td-brand-color-hover);
+      box-shadow: 0 0 0 2px rgba(7, 192, 95, 0.1);
+    }
+    
+    &:focus {
+      border-color: var(--td-brand-color);
+      box-shadow: 0 0 0 3px rgba(7, 192, 95, 0.15);
+      background: var(--td-bg-color-container-hover);
     }
   }
 
