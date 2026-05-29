@@ -70,7 +70,7 @@ WORKDIR /opt/openxml-helper
 
 RUN dotnet new console
 
-RUN dotnet add package DocumentFormat.OpenXml --version 3.0.2
+RUN dotnet add package DocumentFormat.OpenXml --version 3.0.2 --source https://api.nuget.org/v3/index.json
 
 # Optional but useful
 RUN dotnet add package OpenXmlPowerTools

@@ -22,56 +22,10 @@
           <t-icon name="control-platform" class="menu-icon" />
           <span>{{ $t('settings.modelManagement') }}</span>
         </div>
-        <div class="menu-item" @click="handleQuickNav('websearch')">
-          <svg 
-            width="16" 
-            height="16" 
-            viewBox="0 0 18 18" 
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            class="menu-icon svg-icon"
-          >
-            <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.2" fill="none"/>
-            <path d="M 9 2 A 3.5 7 0 0 0 9 16" stroke="currentColor" stroke-width="1.2" fill="none"/>
-            <path d="M 9 2 A 3.5 7 0 0 1 9 16" stroke="currentColor" stroke-width="1.2" fill="none"/>
-            <line x1="2.94" y1="5.5" x2="15.06" y2="5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-            <line x1="2.94" y1="12.5" x2="15.06" y2="12.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          <span>{{ $t('settings.webSearchConfig') }}</span>
-        </div>
-        <div class="menu-item" @click="handleQuickNav('mcp')">
-          <t-icon name="tools" class="menu-icon" />
-          <span>{{ $t('settings.mcpService') }}</span>
-        </div>
-        <div class="menu-item" @click="handleQuickNav('api')">
-          <t-icon name="secured" class="menu-icon" />
-          <span>{{ $t('settings.apiInfo') }}</span>
-        </div>
-        <div
-          ref="imMenuItemRef"
-          class="menu-item menu-item--submenu"
-          :class="{ 'is-open': imSubmenuOpen }"
-          @mouseenter="showIMSubmenu"
-          @mouseleave="scheduleHideIMSubmenu"
-        >
-          <t-icon name="link" class="menu-icon" />
-          <span class="menu-item-label">{{ $t('imOverview.menuTitle') }}</span>
-          <span
-            v-if="hasActiveIMChannels"
-            class="live-indicator"
-            :title="$t('imOverview.liveIndicator')"
-            aria-hidden="true"
-          >
-            <span class="live-indicator-dot"></span>
-          </span>
-          <t-icon name="chevron-right" class="menu-chevron" />
-        </div>
-        <div class="menu-divider"></div>
         <div class="menu-item" @click="handleSettings">
           <t-icon name="setting" class="menu-icon" />
           <span>{{ $t('general.allSettings') }}</span>
         </div>
-        <!-- Hidden: Claw Skill, Chrome Extension, Github menu items -->
         <!--
         <div class="menu-divider"></div>
         <div class="menu-item" @click="openClawhubSkill">
@@ -128,24 +82,6 @@
       </div>
     </Transition>
 
-    <!-- IM submenu is teleported to body because the sidebar (.aside_box) has
-         overflow:hidden, which would otherwise clip any absolutely-positioned
-         child that reaches past its bounds. -->
-    <Teleport to="body">
-      <div
-        v-if="imSubmenuOpen"
-        class="im-submenu-floating"
-        :style="imSubmenuStyle"
-        @mouseenter="showIMSubmenu"
-        @mouseleave="scheduleHideIMSubmenu"
-      >
-        <IMChannelsOverviewPanel
-          :active="imSubmenuOpen"
-          @close="closeAll"
-          @channels-changed="onChannelsChanged"
-        />
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -157,8 +93,6 @@ import { useAuthStore } from '@/stores/auth'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getCurrentUser, logout as logoutApi } from '@/api/auth'
 import { useI18n } from 'vue-i18n'
-import IMChannelsOverviewPanel from '@/components/IMChannelsOverviewPanel.vue'
-import { listAllIMChannels, type IMChannelOverview } from '@/api/agent'
 
 const { t } = useI18n()
 
@@ -167,12 +101,7 @@ const uiStore = useUIStore()
 const authStore = useAuthStore()
 
 const menuRef = ref<HTMLElement>()
-const imMenuItemRef = ref<HTMLElement>()
 const menuVisible = ref(false)
-const imSubmenuOpen = ref(false)
-const imSubmenuStyle = ref<Record<string, string>>({})
-const hasActiveIMChannels = ref(false)
-let imSubmenuHideTimer: ReturnType<typeof setTimeout> | null = null
 
 // 用户信息
 const userInfo = ref({
@@ -214,81 +143,6 @@ const handleSettings = () => {
   menuVisible.value = false
   uiStore.openSettings()
   router.push('/platform/settings')
-}
-
-// Hover-driven submenu controls. A small hide delay tolerates the pointer
-// slipping off briefly onto the gap between menu item and submenu pane.
-const showIMSubmenu = () => {
-  if (imSubmenuHideTimer) {
-    clearTimeout(imSubmenuHideTimer)
-    imSubmenuHideTimer = null
-  }
-  // Compute panel position based on the menu item's rect — the panel is
-  // teleported to body so we can't rely on CSS `left: 100%`.
-  positionIMSubmenu()
-  imSubmenuOpen.value = true
-}
-
-const scheduleHideIMSubmenu = () => {
-  if (imSubmenuHideTimer) clearTimeout(imSubmenuHideTimer)
-  imSubmenuHideTimer = setTimeout(() => {
-    imSubmenuOpen.value = false
-    imSubmenuHideTimer = null
-  }, 180)
-}
-
-const closeAll = () => {
-  imSubmenuOpen.value = false
-  menuVisible.value = false
-}
-
-// Silent prefetch so the "live" indicator on the IM menu item reflects reality
-// as soon as the user sees the avatar area. Errors are swallowed — the
-// indicator just stays off if the request fails, which is the conservative
-// default. The panel component emits channels-changed after toggle/refresh so
-// we stay in sync without re-polling.
-const refreshIMStatus = async () => {
-  try {
-    const resp = await listAllIMChannels()
-    const data: IMChannelOverview[] = resp?.data || []
-    hasActiveIMChannels.value = data.some((c) => c.enabled)
-  } catch {
-    // Intentionally ignored — indicator just stays off.
-  }
-}
-
-const onChannelsChanged = (channels: IMChannelOverview[]) => {
-  hasActiveIMChannels.value = channels.some((c) => c.enabled)
-}
-
-// Anchor the floating submenu just to the right of the hovered menu item,
-// clamped to the viewport so it stays visible near the screen edge.
-const positionIMSubmenu = () => {
-  const el = imMenuItemRef.value
-  if (!el) return
-  const rect = el.getBoundingClientRect()
-  const PANEL_WIDTH = 300
-  const PANEL_MAX_HEIGHT = 520
-  const GAP = 8
-  const MARGIN = 8
-
-  let left = rect.right + GAP
-  // If the panel would overflow the right edge, flip to the left side.
-  if (left + PANEL_WIDTH + MARGIN > window.innerWidth) {
-    left = Math.max(MARGIN, rect.left - PANEL_WIDTH - GAP)
-  }
-
-  // Align the panel's top with the menu item, then clamp so it doesn't
-  // spill past the bottom of the viewport.
-  let top = rect.top - 4
-  const maxTop = window.innerHeight - Math.min(PANEL_MAX_HEIGHT, window.innerHeight - MARGIN * 2) - MARGIN
-  if (top > maxTop) top = maxTop
-  if (top < MARGIN) top = MARGIN
-
-  imSubmenuStyle.value = {
-    left: `${left}px`,
-    top: `${top}px`,
-  }
 }
 
 const CHROME_EXTENSION_URL =
@@ -377,18 +231,12 @@ const loadUserInfo = async () => {
 const handleClickOutside = (e: MouseEvent) => {
   const target = e.target as Node
   if (menuRef.value && menuRef.value.contains(target)) return
-  // The submenu is teleported to body, so it's not inside menuRef — check it
-  // separately to avoid closing the dropdown when the user clicks the submenu.
-  const floating = document.querySelector('.im-submenu-floating')
-  if (floating && floating.contains(target)) return
   menuVisible.value = false
-  imSubmenuOpen.value = false
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   loadUserInfo()
-  refreshIMStatus()
 })
 
 onUnmounted(() => {
@@ -697,36 +545,6 @@ onUnmounted(() => {
 .dropdown-leave-from {
   opacity: 1;
   transform: translateY(0);
-}
-
-// Live indicator halo animation — a soft expanding ring to signal that at
-// least one IM channel is actively connected.
-@keyframes im-live-pulse {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.45;
-  }
-  70% {
-    transform: scale(1.8);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.8);
-    opacity: 0;
-  }
-}
-</style>
-
-<style lang="less">
-// Non-scoped: the IM submenu is teleported to <body> so scoped styles
-// from this component won't reach it. The panel component's own CSS is
-// scoped and self-contained; this rule only positions the wrapper.
-.im-submenu-floating {
-  position: fixed;
-  z-index: 1100;
-  // Invisible padding forms a pointer bridge from the menu item to the
-  // panel so hovering across the gap doesn't fire mouseleave-hide.
-  padding-left: 2px;
 }
 </style>
 

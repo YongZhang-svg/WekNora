@@ -482,6 +482,8 @@ import {
   ensureMermaidInitialized,
   renderMermaidInContainer,
 } from '@/utils/mermaidShared';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
+import { saveAs } from 'file-saver';
 
 const router = useRouter();
 const route = useRoute();
@@ -2635,7 +2637,7 @@ const formatAgentText = (answerEvent: any, command: string = 'h1', value?: strin
   answerEvent.content = el.innerHTML;
 };
 
-const handleExportWord = (answerEvent: any) => {
+const handleExportWord = async (answerEvent: any) => {
   const content = getActualContent(answerEvent);
   if (!content) {
     MessagePlugin.warning(t('agentStream.copy.emptyContent'));
@@ -2644,82 +2646,168 @@ const handleExportWord = (answerEvent: any) => {
 
   const title = 'AI回复内容';
   
-  // 判断内容是否为 HTML 格式
-  const isHTML = /<(h[1-6]|p|ul|ol|li|strong|em|b|i|div|table|tr|td|th|br)[\s>]/i.test(content);
-  
-  let bodyContent;
-  if (isHTML) {
-    // 如果已经是 HTML 格式，直接使用，但清理空标签
-    bodyContent = content
-      // 移除空的段落标签
-      .replace(/<p>\s*<\/p>/gi, '')
-      // 移除空的列表项
-      .replace(/<li>\s*<\/li>/gi, '')
-      // 移除只有空白字符和换行符的 div
-      .replace(/<div>\s*<\/div>/gi, '')
-      // 移除连续的空行（多个 <br>）
-      .replace(/(<br\s*\/?>\s*){3,}/gi, '<br/><br/>')
-      // 清理标签内多余空白
-      .replace(/>\s+</g, '><');
-  } else {
-    // 如果是 Markdown/纯文本，转换为简单 HTML，去掉空行
-    bodyContent = `<div>${content
-      .split('\n')
-      .filter(line => line.trim() !== '')  // 过滤空行
-      .join('<br/>')}</div>`;
+  try {
+    // 判断内容是否为 HTML 格式
+    const isHTML = /<(h[1-6]|p|ul|ol|li|strong|em|b|i|div|table|tr|td|th|br)[\s>]/i.test(content);
+    
+    let htmlContent;
+    if (isHTML) {
+      htmlContent = content;
+    } else {
+      // 如果是 Markdown/纯文本，使用 marked 转换为 HTML
+      htmlContent = marked(content);
+    }
+    
+    // 解析 HTML 内容并转换为 docx 文档元素
+    const docChildren: any[] = [];
+    
+    // 创建临时 DOM 来解析 HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    // 递归处理 DOM 节点
+    const processNode = (node: any, format: any = {}): any[] => {
+      const results: any[] = [];
+      
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent.trim();
+        if (text) {
+          results.push(new TextRun({ text, size: 24, ...format })); // 12pt = 24 half-points
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tagName = node.tagName.toLowerCase();
+        
+        // 处理标题
+        if (tagName.match(/^h[1-6]$/)) {
+          const level = parseInt(tagName[1]);
+          const fontSizes = [48, 40, 32, 28, 24, 24]; // h1-h6 的字体大小
+          const headingLevels = [
+            HeadingLevel.HEADING_1,
+            HeadingLevel.HEADING_2,
+            HeadingLevel.HEADING_3,
+            HeadingLevel.HEADING_4,
+            HeadingLevel.HEADING_5,
+            HeadingLevel.HEADING_6
+          ];
+          
+          const textRuns = Array.from(node.childNodes).flatMap((child: any) => processNode(child));
+          if (textRuns.length > 0) {
+            results.push(new Paragraph({
+              heading: headingLevels[level - 1],
+              children: textRuns,
+              spacing: { before: 200, after: 100 }
+            }));
+          }
+        }
+        // 处理段落
+        else if (tagName === 'p' || tagName === 'div') {
+          const textRuns = Array.from(node.childNodes).flatMap((child: any) => processNode(child));
+          if (textRuns.length > 0) {
+            results.push(new Paragraph({
+              children: textRuns,
+              spacing: { after: 120 },
+              indent: { firstLine: 480 } // 首行缩进 2 字符
+            }));
+          }
+        }
+        // 处理列表
+        else if (tagName === 'ul' || tagName === 'ol') {
+          let index = 0;
+          Array.from(node.children).forEach((child: any) => {
+            if (child.tagName.toLowerCase() === 'li') {
+              index++;
+              const textRuns = Array.from(child.childNodes).flatMap((c: any) => processNode(c));
+              if (textRuns.length > 0) {
+                results.push(new Paragraph({
+                  children: [
+                    new TextRun({ 
+                      text: tagName === 'ol' ? `${index}. ` : '• ',
+                      size: 24
+                    }),
+                    ...textRuns
+                  ],
+                  indent: { left: 720 },
+                  spacing: { after: 60 }
+                }));
+              }
+            }
+          });
+        }
+        // 处理表格
+        else if (tagName === 'table') {
+          const rows: TableRow[] = [];
+          Array.from(node.querySelectorAll('tr')).forEach((tr: any) => {
+            const cells: TableCell[] = [];
+            Array.from(tr.children).forEach((cell: any) => {
+              const isHeader = cell.tagName.toLowerCase() === 'th';
+              const textRuns = Array.from(cell.childNodes).flatMap((c: any) => processNode(c));
+              cells.push(new TableCell({
+                children: [new Paragraph({
+                  children: textRuns,
+                  spacing: { after: 60 }
+                })],
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                shading: isHeader ? { fill: 'F0F0F0', type: 'clear' } : undefined
+              }));
+            });
+            rows.push(new TableRow({ children: cells }));
+          });
+          
+          if (rows.length > 0) {
+            results.push(new Table({
+              rows,
+              width: { size: 100, type: WidthType.PERCENTAGE }
+            }));
+          }
+        }
+        // 处理文本格式标签
+        else if (tagName === 'strong' || tagName === 'b') {
+          results.push(...Array.from(node.childNodes).flatMap((child: any) => processNode(child, { ...format, bold: true })));
+        }
+        else if (tagName === 'em' || tagName === 'i') {
+          results.push(...Array.from(node.childNodes).flatMap((child: any) => processNode(child, { ...format, italics: true })));
+        }
+        else if (tagName === 'br') {
+          results.push(new TextRun({ text: '', break: 1 }));
+        }
+        // 其他标签，处理子节点
+        else {
+          results.push(...Array.from(node.childNodes).flatMap((child: any) => processNode(child, format)));
+        }
+      }
+      
+      return results;
+    };
+    
+    // 处理顶层节点
+    Array.from(tempDiv.children).forEach((child: any) => {
+      docChildren.push(...processNode(child));
+    });
+    
+    // 如果没有解析出任何内容，使用纯文本
+    if (docChildren.length === 0) {
+      docChildren.push(new Paragraph({
+        children: [new TextRun({ text: content, size: 24 })],
+        spacing: { after: 120 }
+      }));
+    }
+    
+    // 创建 docx 文档
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: docChildren
+      }]
+    });
+    
+    // 生成并下载文件
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `${title}.docx`);
+    MessagePlugin.success('Word 导出成功');
+  } catch (error) {
+    console.error('Word 导出失败:', error);
+    MessagePlugin.error('Word 导出失败，请重试');
   }
-  
-  const fullHtml = `<!DOCTYPE html>
-<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-<head><meta charset="utf-8"><title>${title}</title>
-<!--[if gte mso 9]>
-<xml>
-  <w:WordDocument>
-    <w:View>Print</w:View>
-    <w:Zoom>100</w:Zoom>
-    <w:DoNotOptimizeForBrowser/>
-  </w:WordDocument>
-</xml>
-<style>
-@page Section1 {
-  size: 595.3pt 841.9pt;
-  margin: 72.0pt 72.0pt 72.0pt 72.0pt;
-  mso-page-orientation: portrait;
-}
-div.Section1 { page: Section1; }
-</style>
-<![endif]-->
-<style>
-body{font-family:SimSun,'宋体',serif;font-size:12pt;color:#000;word-wrap:break-word;overflow-wrap:break-word;}
-p{margin:0 0 6pt 0;line-height:1.5;text-indent:2em;text-indent:24pt;}
-h1{font-size:20pt;font-weight:bold;margin:12pt 0 8pt 0;text-align:center;}
-h2{font-size:16pt;font-weight:bold;margin:10pt 0 6pt 0;text-indent:0;}
-h3{font-size:14pt;font-weight:bold;margin:8pt 0 4pt 0;text-indent:0;}
-ul,ol{margin:4pt 0;padding-left:40pt;}
-li{margin:2pt 0;line-height:1.5;text-indent:2em;list-style-position:outside;}
-ul ul,ol ol,ul ol,ol ul{margin:2pt 0;padding-left:36pt;}
-li ul,li ol{margin:2pt 0;}
-strong,b{font-weight:bold;}
-em,i{font-style:italic;}
-table{border-collapse:collapse;margin:8pt 0;width:100%;word-wrap:break-word;overflow-wrap:break-word;}
-th,td{border:1px solid #000;padding:6pt 8pt;text-align:left;word-wrap:break-word;overflow-wrap:break-word;}
-th{background:#f0f0f0;font-weight:bold;}
-</style>
-</head>
-<body>
-<div class="Section1">
-${bodyContent}
-</div>
-</body></html>`;
-  
-  const blob = new Blob([fullHtml], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${title}.doc`;
-  a.click();
-  URL.revokeObjectURL(url);
-  MessagePlugin.success('Word 导出成功');
 };
 </script>
 
