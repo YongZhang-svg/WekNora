@@ -857,6 +857,7 @@ const handleCopy = (agent: AgentWithUI) => {
     if (res.data) {
       MessagePlugin.success(t('agent.messages.copied'))
       fetchList()
+      window.dispatchEvent(new CustomEvent('agents-changed'))
     } else {
       MessagePlugin.error(res.message || t('agent.messages.copyFailed'))
     }
@@ -923,6 +924,7 @@ const confirmDelete = () => {
       deleteVisible.value = false
       deletingAgent.value = null
       fetchList()
+      window.dispatchEvent(new CustomEvent('agents-changed'))
     } else {
       MessagePlugin.error(res.message || t('agent.messages.deleteFailed'))
     }
@@ -935,6 +937,7 @@ const handleEditorSuccess = () => {
   editorVisible.value = false
   editingAgent.value = null
   fetchList()
+  window.dispatchEvent(new CustomEvent('agents-changed'))
 }
 
 const formatDate = (dateStr: string) => {

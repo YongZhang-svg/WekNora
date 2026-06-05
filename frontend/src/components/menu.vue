@@ -64,7 +64,7 @@
                 </t-tooltip>
             </div>
             <div class="menu_box" :class="{ 'has-submenu': item.children }" v-for="(item, index) in topMenuItems" :key="index">
-                <t-tooltip :content="item.title" placement="right" :disabled="!uiStore.sidebarCollapsed">
+                <t-tooltip v-if="item.path !== 'creatChat'" :content="item.title" placement="right" :disabled="!uiStore.sidebarCollapsed">
                 <div @click="handleMenuClick(item.path)"
                     @mouseenter="mouseenteMenu(item.path)" @mouseleave="mouseleaveMenu(item.path)"
                      :class="['menu_item', item.childrenPath && item.childrenPath == currentpath ? 'menu_item_c_active' : isMenuItemActive(item.path) ? 'menu_item_active' : '']">
@@ -75,12 +75,45 @@
                         <template v-if="!uiStore.sidebarCollapsed">
                             <span class="menu_title" :title="item.title">{{ item.title }}</span>
                             <span v-if="item.path === 'organizations' && orgStore.totalPendingJoinRequestCount > 0" class="menu-pending-badge" :title="t('organization.settings.pendingJoinRequestsBadge')">{{ orgStore.totalPendingJoinRequestCount }}</span>
-                            <span v-if="item.path === 'creatChat' && batchMode" class="batch-cancel-hint" @click.stop="exitBatchMode">{{ t('batchManage.cancel') }}</span>
-                            <t-icon v-else-if="item.path === 'creatChat'" name="add" class="menu-create-hint" />
+                            <t-icon v-if="item.path === 'creatChat' && !batchMode" name="add" class="menu-create-hint" />
                         </template>
                     </div>
                 </div>
                 </t-tooltip>
+                <!-- 智能体分类标题（仅在展开时显示） -->
+                <div v-if="item.path === 'creatChat' && !uiStore.sidebarCollapsed" class="sidebar-section-title">写作助手</div>
+                <div v-if="item.path === 'creatChat' && !uiStore.sidebarCollapsed" class="sidebar-agent-list">
+                  <div
+                    v-for="tab in agentTabs"
+                    :key="tab.id"
+                    :data-agent-id="tab.id"
+                    :draggable="!batchMode"
+                    class="menu_item"
+                    :class="{ 'menu_item_active': settingsStore.selectedAgentId === tab.id, 'menu_item_dragging': dragId === tab.id }"
+                    @click="handleAgentTabClick(tab.id)"
+                    @touchstart="onTouchStart(tab.id, $event)"
+                    @touchmove.prevent="onTouchMove($event)"
+                    @touchend="onTouchEnd"
+                    @dragstart="onDragStart(tab.id, $event)"
+                    @dragover="onDragOver($event)"
+                    @dragenter.prevent
+                    @dragleave="onDragLeave"
+                    @drop="onDrop(tab.id, $event)"
+                    @dragend="onDragEnd"
+                  >
+                    <div class="menu_item-box">
+                      <div class="menu_icon">
+                        <span v-if="tab.avatar" style="font-size: 16px;">{{ tab.avatar }}</span>
+                        <t-icon v-else :name="tab.icon" size="20px" />
+                      </div>
+                      <span class="menu_title">{{ tab.label }}</span>
+                    </div>
+                    <span v-if="!batchMode" class="agent-create-hint" @click.stop="handleAgentNewChat(tab.id)">
+                      <t-icon name="add" /> 创建新对话
+                    </span>
+                  </div>
+                </div>
+                <div v-if="item.path === 'creatChat' && !uiStore.sidebarCollapsed" class="sidebar-history-label">对话历史</div>
                 <div ref="submenuscrollContainer" @scroll="handleScroll" class="submenu" v-if="item.children && !uiStore.sidebarCollapsed">
                     <!-- 骨架屏占位 -->
                     <template v-if="loading && groupedSessions.length === 0">
@@ -134,6 +167,7 @@
                         >
                             {{ t('batchManage.selectAll') }}
                         </t-checkbox>
+                        <t-link theme="danger" @click="exitBatchMode" style="margin-left: 12px;">{{ t('batchManage.cancel') }}</t-link>
                     </div>
                     <t-button
                         size="small"
@@ -176,7 +210,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { onMounted, watch, computed, ref, h } from 'vue';
+import { onMounted, onUnmounted, watch, computed, ref, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getSessionsList, delSession, batchDelSessions, deleteAllSessions, clearSessionMessages, pinSession, unpinSession } from "@/api/chat/index";
 import { getKnowledgeBaseById } from '@/api/knowledge-base';
@@ -184,8 +218,10 @@ import { logout as logoutApi } from '@/api/auth';
 import { useMenuStore } from '@/stores/menu';
 import { useAuthStore } from '@/stores/auth';
 import { useOrganizationStore } from '@/stores/organization';
+import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
 import { useCommandPaletteStore } from '@/stores/commandPalette';
+import { listAgents } from '@/api/agent';
 import { MessagePlugin, DialogPlugin, Icon as TIcon } from "tdesign-vue-next";
 import UserMenu from '@/components/UserMenu.vue';
 import TenantSelector from '@/components/TenantSelector.vue';
@@ -218,6 +254,7 @@ const usemenuStore = useMenuStore();
 const authStore = useAuthStore();
 const orgStore = useOrganizationStore();
 const uiStore = useUIStore();
+const settingsStore = useSettingsStore();
 const commandPaletteStore = useCommandPaletteStore();
 
 // Platform-aware label for the ⌘K hint. navigator.platform is deprecated but
@@ -241,6 +278,153 @@ type MenuItem = { title: string; icon: string; path: string; childrenPath?: stri
 const { menuArr, visibleMenuArr } = storeToRefs(usemenuStore);
 let activeSubmenu = ref<string>('');
 const isLiteEdition = ref(false);
+
+// 点击智能体标签：选中并跳转到新对话
+const handleAgentTabClick = (agentId: string) => {
+  settingsStore.selectAgent(agentId);
+  router.push('/platform/creatChat');
+};
+
+// 点击智能体上的新建对话按钮：选中并跳转到新对话
+const handleAgentNewChat = (agentId: string) => {
+  settingsStore.selectAgent(agentId);
+  router.push('/platform/creatChat');
+};
+
+// 所有智能体（从 API 加载）
+const sidebarAgents = ref<any[]>([]);
+
+// 拖拽排序状态
+const dragId = ref<string | null>(null);
+const STORAGE_KEY = 'sidebar-agent-order';
+
+// 应用保存的排序（基于 API 返回顺序调整）
+const applySavedOrder = (agents: any[]) => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return agents;
+    const order: string[] = JSON.parse(saved);
+    const sorted = [...agents].sort((a, b) => {
+      const ai = order.indexOf(a.id);
+      const bi = order.indexOf(b.id);
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+    return sorted;
+  } catch { return agents; }
+};
+
+const onDragStart = (id: string, e: DragEvent) => {
+  dragId.value = id;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  }
+};
+
+const onDragOver = (e: DragEvent) => {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  // 自动滚动：拖拽到边缘时滚动容器
+  const list = (e.currentTarget as HTMLElement)?.closest('.sidebar-agent-list');
+  if (!list) return;
+  const rect = list.getBoundingClientRect();
+  const threshold = 30;
+  const distTop = e.clientY - rect.top;
+  const distBottom = rect.bottom - e.clientY;
+  if (distTop < threshold) {
+    list.scrollTop -= 8;
+  } else if (distBottom < threshold) {
+    list.scrollTop += 8;
+  }
+};
+
+const onDrop = (id: string, e: DragEvent) => {
+  e.preventDefault();
+  const fromId = dragId.value || e.dataTransfer?.getData('text/plain');
+  if (!fromId || fromId === id) return;
+  const from = sidebarAgents.value.findIndex((a: any) => a.id === fromId);
+  const to = sidebarAgents.value.findIndex((a: any) => a.id === id);
+  if (from !== -1 && to !== -1) {
+    const arr = [...sidebarAgents.value];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    sidebarAgents.value = arr;
+  }
+  dragId.value = null;
+};
+
+const onDragLeave = (e: DragEvent) => {
+  e.stopPropagation();
+};
+
+const onDragEnd = () => {
+  dragId.value = null;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sidebarAgents.value.map((a: any) => a.id)));
+  } catch {}
+};
+
+// 触控设备拖拽支持
+const touchDragId = ref<string | null>(null);
+const onTouchStart = (id: string, e: TouchEvent) => {
+  touchDragId.value = id;
+};
+const onTouchMove = (e: TouchEvent) => {
+  if (!touchDragId.value) return;
+  const touch = e.touches[0];
+  const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-agent-id]') as HTMLElement | null;
+  if (el && el.dataset.agentId && el.dataset.agentId !== touchDragId.value) {
+    const from = sidebarAgents.value.findIndex((a: any) => a.id === touchDragId.value);
+    const to = sidebarAgents.value.findIndex((a: any) => a.id === el.dataset.agentId);
+    if (from !== -1 && to !== -1) {
+      const arr = [...sidebarAgents.value];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      sidebarAgents.value = arr;
+    }
+    touchDragId.value = el.dataset.agentId;
+  }
+};
+const onTouchEnd = () => {
+  touchDragId.value = null;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sidebarAgents.value.map((a: any) => a.id)));
+  } catch {}
+};
+
+// 智能体列表数据
+const agentTabs = computed(() =>
+  sidebarAgents.value.map((a: any) => ({
+    id: a.id,
+    label: a.name,
+    icon: 'app',
+    avatar: a.avatar || undefined,
+  }))
+);
+
+// 当前选中的智能体名称
+// 加载智能体列表（从后端 API 获取，包括内置和自定义）
+const loadSidebarAgents = async () => {
+  try {
+    const res = await listAgents();
+    const data = (res as { data?: any[] }).data || [];
+    sidebarAgents.value = applySavedOrder(data);
+  } catch (e) {
+    console.error('Failed to load agents for sidebar:', e);
+  }
+};
+
+onMounted(() => {
+  loadSidebarAgents();
+  window.addEventListener('agents-changed', loadSidebarAgents);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('agents-changed', loadSidebarAgents);
+});
 
 // 批量管理状态
 const batchMode = ref(false)
@@ -342,14 +526,16 @@ const getIconActiveState = (itemPath: string) => {
 
 // 分离上下两部分菜单：上半部分为业务工具，下半部分为配置/管理（功能配置、个人知识库等移至底部）
 const topMenuItems = computed<MenuItem[]>(() => {
-    return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) =>
-        item.path === 'creatChat' || item.path === 'ppt-generation' || item.path === 'text2video' || item.path === 'excel-process' || item.path === 'doc-parser'
-    );
+    const arr = visibleMenuArr.value as unknown as MenuItem[];
+    const order = ['agents', 'knowledge-bases', 'creatChat', 'organizations'];
+    return order
+        .map(p => arr.find(item => item.path === p))
+        .filter((item): item is MenuItem => item !== undefined);
 });
 
 const bottomMenuItems = computed<MenuItem[]>(() => {
     return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) => {
-        if (item.path === 'creatChat' || item.path === 'ppt-generation' || item.path === 'text2video' || item.path === 'excel-process' || item.path === 'doc-parser') {
+        if (item.path === 'agents' || item.path === 'knowledge-bases' || item.path === 'creatChat' || item.path === 'organizations') {
             return false;
         }
         return true;
@@ -750,6 +936,11 @@ watch([() => route.name, () => route.params], (newvalue, oldvalue) => {
         getMessageList();
     }
     
+    // 进入对话页时刷新智能体列表（新建智能体后能及时显示）
+    if (nameStr === 'chat' || nameStr === 'globalCreatChat' || nameStr === 'kbCreatChat') {
+      loadSidebarAgents();
+    }
+
     // 路由变化时更新图标状态和知识库信息（不涉及对话列表）
     getIcon(nameStr);
     
@@ -1504,6 +1695,46 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
     opacity: 1;
 }
 
+/* 智能体列表的新建对话按钮 */
+.sidebar-agent-list .menu_item {
+    position: relative;
+}
+
+.agent-create-hint {
+    margin-left: auto;
+    margin-right: 4px;
+    font-size: 12px;
+    color: var(--td-brand-color);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    flex-shrink: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* 拖拽排序 */
+.sidebar-agent-list .menu_item {
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.menu_item_dragging {
+  opacity: 0.5;
+  background: var(--td-brand-color-light, #eefdf5);
+  cursor: grabbing;
+}
+
+.sidebar-agent-list .menu_item:hover .agent-create-hint {
+    opacity: 0.7;
+}
+
+.sidebar-agent-list .menu_item:hover .agent-create-hint:hover {
+    opacity: 1;
+}
+
 .menu-cmdk-hint {
     margin-left: auto;
     margin-right: 8px;
@@ -1550,6 +1781,37 @@ const onDragHandleMouseDown = (e: MouseEvent) => {
 
 .menu_box {
     position: relative;
+}
+</style>
+<style lang="less">
+/* 侧边栏分类标题 */
+.sidebar-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--td-text-color-placeholder, #999);
+  padding: 8px 16px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-history-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--td-text-color-placeholder, #999);
+  padding: 4px 16px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 智能体列表：只显示约3个，超出滚动 */
+.sidebar-agent-list {
+  max-height: calc(48px * 4 + 4px * 4);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
 }
 </style>
 <style lang="less">

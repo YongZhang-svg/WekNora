@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+
 	"time"
 
 	agenttools "github.com/Tencent/WeKnora/internal/agent/tools"
@@ -186,10 +187,10 @@ func (e *AgentEngine) emitCompletionEvent(
 		Data: event.AgentCompleteData{
 			FinalAnswer:     state.FinalAnswer,
 			KnowledgeRefs:   knowledgeRefsInterface,
-			AgentSteps:      state.RoundSteps, // Include detailed execution steps for message storage
+			AgentSteps:      state.RoundSteps,
 			TotalSteps:      len(state.RoundSteps),
 			TotalDurationMs: time.Since(startTime).Milliseconds(),
-			MessageID:       messageID, // Include message ID for proper message update
+			MessageID:       messageID,
 		},
 	})
 

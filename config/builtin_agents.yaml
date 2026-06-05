@@ -541,7 +541,7 @@ builtin_agents:
         name: "Unlimited"
         description: "General-purpose writing assistant with full skill set — reports, PPT, academic, gov, speech, and more"
       zh-CN:
-        name: "不限"
+        name: "写作助手"
         description: "通用写作助手，支持检索、研究报告、PPT、公文、演讲稿等多种格式"
       zh-TW:
         name: "不限"

@@ -42,11 +42,6 @@
             </div>
         </transition>
         <div class="input-container" :class="{ 'is-embedded': embeddedMode }">
-            <WritingAssistantTabs
-                v-if="!embeddedMode"
-                :activeAgentId="useSettingsStoreInstance.selectedAgentId"
-                @select="handleTabSelect"
-            />
             <InputField
                 ref="inputFieldRef"
                 @send-msg="(query, modelId, mentionedItems, imageFiles, attachmentFiles) => sendMsg(query, modelId, mentionedItems, imageFiles, attachmentFiles)"
@@ -68,6 +63,36 @@
         @update:visible="(val) => val ? null : uiStore.closeKBEditor()"
         @success="handleKBEditorSuccess"
     />
+    
+    <!-- 大纲确认对话框 -->
+    <t-dialog
+        v-model:visible="showOutlineConfirm"
+        header="确认大纲"
+        confirm-btn="确认并生成完整报告"
+        cancel-btn="取消"
+        @confirm="handleOutlineConfirm"
+        @close="handleOutlineCancel"
+        width="800"
+        :close-on-overlay-click="false"
+        top="8%"
+    >
+        <div class="outline-confirm-content">
+            <div class="outline-toolbar" style="margin-bottom: 6px; display: flex; gap: 4px; flex-wrap: wrap;">
+                <button type="button" @mousedown.prevent="execFormat('formatBlock', 'h1')" style="padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px; font-weight: bold;">H1</button>
+                <button type="button" @mousedown.prevent="execFormat('formatBlock', 'h2')" style="padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px; font-weight: bold;">H2</button>
+                <button type="button" @mousedown.prevent="execFormat('formatBlock', 'h3')" style="padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px; font-weight: bold;">H3</button>
+                <button type="button" @mousedown.prevent="execFormat('bold')" style="padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px; font-weight: bold;">B</button>
+                <button type="button" @mousedown.prevent="execFormat('insertUnorderedList')" style="padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px;">•</button>
+                <button type="button" @mousedown.prevent="execFormat('insertOrderedList')" style="padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 13px;">1.</button>
+            </div>
+            <div
+                ref="outlineEditorRef"
+                contenteditable="true"
+                style="max-height: 380px; min-height: 200px; overflow-y: auto; background: #fff; padding: 16px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 14px; line-height: 1.8; outline: none; box-sizing: border-box;"
+                @input="handleOutlineEdit"
+            ></div>
+        </div>
+    </t-dialog>
 </template>
 <script setup>
 import { storeToRefs } from 'pinia';
@@ -77,7 +102,7 @@ import InputField from '../../components/Input-field.vue';
 import botmsg from './components/botmsg.vue';
 import usermsg from './components/usermsg.vue';
 import { getMessageList, generateSessionsTitle, getSession } from "@/api/chat/index";
-import WritingAssistantTabs from '@/components/WritingAssistantTabs.vue';
+
 import { useStream } from '../../api/chat/streame'
 import { useMenuStore } from '@/stores/menu';
 import { useSettingsStore } from '@/stores/settings';
@@ -86,6 +111,7 @@ import { useI18n } from 'vue-i18n';
 import { useUIStore } from '@/stores/ui';
 import KnowledgeBaseEditorModal from '@/views/knowledge/KnowledgeBaseEditorModal.vue';
 import { useKnowledgeBaseCreationNavigation } from '@/hooks/useKnowledgeBaseCreationNavigation';
+import { marked } from 'marked';
 
 const props = defineProps({
   session_id: { type: String, default: '' },
@@ -122,6 +148,83 @@ const scrollContainer = ref(null)
 const userHasScrolledUp = ref(false)
 const SCROLL_BOTTOM_THRESHOLD = 80
 
+// 大纲确认状态
+const showOutlineConfirm = ref(false);
+const outlineContent = ref('');
+const outlineEditorRef = ref(null);
+
+// 弹窗打开时，将 markdown 渲染为 HTML 填入可编辑区域
+watch(showOutlineConfirm, (val) => {
+    if (val && outlineEditorRef.value && outlineContent.value) {
+        nextTick(() => {
+            outlineEditorRef.value.innerHTML = marked(outlineContent.value);
+        });
+    }
+});
+
+// 简单 HTML 转 markdown（保留标题层级）
+const editorHtmlToMarkdown = (html) => {
+    return html
+        .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+        .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
+        .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+        .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+        .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+        .replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, function(m, inner) {
+            var idx = 0;
+            return inner.replace(/<li[^>]*>(.*?)<\/li>/gi, function(m2, text) {
+                idx++;
+                return idx + '. ' + text.trim() + '\n';
+            });
+        })
+        .replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, function(m, inner) {
+            return inner.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
+        })
+        .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+};
+
+// 执行编辑命令
+const execFormat = (command, value) => {
+    if (outlineEditorRef.value) {
+        outlineEditorRef.value.focus();
+        document.execCommand(command, false, value || null);
+        // 同步内容
+        handleOutlineEdit();
+    }
+};
+
+// 直接编辑渲染后的内容，同步到 outlineContent
+const handleOutlineEdit = () => {
+    if (outlineEditorRef.value) {
+        outlineContent.value = editorHtmlToMarkdown(outlineEditorRef.value.innerHTML);
+    }
+};
+
+// 确认大纲 - 发送继续生成完整报告的指令
+const handleOutlineConfirm = () => {
+    showOutlineConfirm.value = false;
+    // 从编辑器中提取并转换为 markdown
+    if (outlineEditorRef.value) {
+        outlineContent.value = editorHtmlToMarkdown(outlineEditorRef.value.innerHTML);
+    }
+    const outline = outlineContent.value;
+    outlineContent.value = '';
+    // 将大纲内容传给智能体，让它基于编辑后的大纲生成报告
+    const followUpPrompt = '严格按照以下新的大纲进行生成\n\n' + outline;
+    sendMsg(followUpPrompt);
+};
+
+// 取消大纲确认
+const handleOutlineCancel = () => {
+    showOutlineConfirm.value = false;
+    outlineContent.value = '';
+};
+
 const isNearBottom = () => {
     if (!scrollContainer.value) return true;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
@@ -132,10 +235,7 @@ const handleKBEditorSuccess = (kbId) => {
     navigateToKnowledgeBaseList(kbId)
 }
 
-// 写作助手选项卡选择处理
-const handleTabSelect = (agentId) => {
-    useSettingsStoreInstance.selectAgent(agentId);
-};
+
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -1059,6 +1159,12 @@ const handleAgentChunk = (data) => {
             message.is_completed = true;
             fullContent.value = '';
             currentAssistantMessageId.value = '';
+            // 检测是否包含 ```outline(...) 标记，触发确认弹窗
+            const outlineMatch = message.content?.match(/```outline\s*\n?([\s\S]*?)```/);
+            if (outlineMatch) {
+                outlineContent.value = outlineMatch[1].trim();
+                showOutlineConfirm.value = true;
+            }
             // 将 total_duration_ms 存入事件流供 AgentStreamDisplay 使用
             if (message.agentEventStream) {
                 message.agentEventStream.push({

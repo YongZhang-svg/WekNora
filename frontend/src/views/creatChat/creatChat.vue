@@ -5,13 +5,9 @@
                 <div class="title-icon" style="--wails-draggable: drag">
                     <t-icon name="edit-2" size="24px" />
                 </div>
-                <span style="--wails-draggable: drag">{{ $t('createChat.title') }}</span>
+                <span style="--wails-draggable: drag">{{ getAgentName(settingsStore.selectedAgentId) }}</span>
             </div>
-            <!-- 写作助手选项卡 -->
-            <WritingAssistantTabs
-                :activeAgentId="settingsStore.selectedAgentId"
-                @select="handleTabSelect"
-            />
+
             <InputField ref="inputFieldRef" :hideAgentSelector="true" :hideWebSearch="true" @send-msg="sendMsg"></InputField>
         </div>
     </div>
@@ -29,7 +25,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import InputField from '@/components/Input-field.vue';
-import WritingAssistantTabs from '@/components/WritingAssistantTabs.vue';
+
 import { createSessions } from "@/api/chat/index";
 import { useMenuStore } from '@/stores/menu';
 import { useSettingsStore } from '@/stores/settings';
@@ -39,21 +35,40 @@ import { MessagePlugin, Icon as TIcon } from 'tdesign-vue-next';
 import { useI18n } from 'vue-i18n';
 import KnowledgeBaseEditorModal from '@/views/knowledge/KnowledgeBaseEditorModal.vue';
 import { useKnowledgeBaseCreationNavigation } from '@/hooks/useKnowledgeBaseCreationNavigation';
+import { listAgents } from '@/api/agent';
 
 const router = useRouter();
 const route = useRoute();
 const usemenuStore = useMenuStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+
+// 所有智能体列表（从 API 加载）
+const allAgents = ref<any[]>([]);
+
+// 加载智能体列表
+onMounted(async () => {
+  try {
+    const res = await listAgents();
+    const data = (res as { data?: any[] }).data || [];
+    allAgents.value = data;
+  } catch (e) {
+    console.error('Failed to load agents:', e);
+  }
+});
+
+// 根据 agentId 获取智能体显示名称（从后端返回的数据中查找）
+const getAgentName = (id: string): string => {
+  const agent = allAgents.value.find((a: any) => a.id === id);
+  return agent ? agent.name : '写作助手';
+};
 const { t } = useI18n();
 const { navigateToKnowledgeBaseList } = useKnowledgeBaseCreationNavigation();
 
 const inputFieldRef = ref();
 
 // 选项卡选择处理
-const handleTabSelect = (agentId: string) => {
-    settingsStore.selectAgent(agentId);
-};
+
 
 const sendMsg = (value: string, modelId: string, mentionedItems: any[], imageFiles: any[] = [], attachmentFiles: any[] = []) => {
     createNewSession(value, modelId, mentionedItems, imageFiles, attachmentFiles);
@@ -113,6 +128,13 @@ const handleKBEditorSuccess = (kbId: string) => {
 
 </script>
 <style lang="less" scoped>
+.chat-agent-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--td-text-color-primary);
+  padding: 8px 4px 4px;
+}
+
 .dialogue-wrap {
     flex: 1;
     display: flex;

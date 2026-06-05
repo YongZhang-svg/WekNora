@@ -4,10 +4,7 @@
         <div v-if="isRouterAlive" class="platform-route-outlet">
             <RouterView />
         </div>
-        <div class="upload-mask" v-show="ismask">
-            <input type="file" style="display: none" ref="uploadInput" accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.jpg,.jpeg,.png,.csv,.xls,.xlsx" />
-            <UploadMask></UploadMask>
-        </div>
+
         <!-- 全局设置模态框，供所有 platform 子路由使用 -->
         <Settings />
         <!-- 全局命令面板 (⌘K)，随 platform 路由存活 -->
@@ -16,10 +13,11 @@
 </template>
 <script setup lang="ts">
 import Menu from '@/components/menu.vue'
+import useKnowledgeBase from '@/hooks/useKnowledgeBase'
 import { ref, onMounted, onUnmounted, nextTick, provide, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router'
-import useKnowledgeBase from '@/hooks/useKnowledgeBase'
-import UploadMask from '@/components/upload-mask.vue'
+
+
 import Settings from '@/views/settings/Settings.vue'
 import GlobalCommandPalette from '@/components/GlobalCommandPalette.vue'
 import { useCommandPaletteStore } from '@/stores/commandPalette'
@@ -31,8 +29,7 @@ let { requestMethod } = useKnowledgeBase()
 const route = useRoute();
 const router = useRouter();
 const commandPaletteStore = useCommandPaletteStore();
-let ismask = ref(false)
-let uploadInput = ref();
+
 const { t } = useI18n();
 
 const isRouterAlive = ref(true)
@@ -59,132 +56,14 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
     }
 }
 
-// 用于跟踪拖拽进入/离开的计数器，解决子元素触发 dragleave 的问题
-let dragCounter = 0;
-
 // 获取当前知识库ID
 const getCurrentKbId = (): string | null => {
     return (route.params as any)?.kbId as string || null
 }
 
-const CHAT_DROP_ROUTE_NAMES = new Set(['chat', 'globalCreatChat', 'kbCreatChat']);
-
-const isChatDropRoute = () => {
-    return CHAT_DROP_ROUTE_NAMES.has(String(route.name || ''));
-}
-
-const collectDroppedFiles = async (event: DragEvent): Promise<File[]> => {
-    const dataTransferFiles = event.dataTransfer?.files ? Array.from(event.dataTransfer.files) : [];
-    if (dataTransferFiles.length > 0) {
-        return dataTransferFiles;
-    }
-
-    const dataTransferItems = event.dataTransfer?.items ? Array.from(event.dataTransfer.items) : [];
-    if (dataTransferItems.length === 0) {
-        return [];
-    }
-
-    const files = await Promise.all(dataTransferItems.map(item => new Promise<File | null>((resolve) => {
-        const fileEntry = (item as any).webkitGetAsEntry?.();
-        if (fileEntry?.isFile && typeof fileEntry.file === 'function') {
-            fileEntry.file((file: File) => resolve(file), () => resolve(null));
-            return;
-        }
-        resolve(null);
-    })));
-
-    return files.filter((file): file is File => file instanceof File);
-}
-
-// 检查知识库初始化状态
-const checkKnowledgeBaseInitialization = async (): Promise<boolean> => {
-    const currentKbId = getCurrentKbId();
-    
-    if (!currentKbId) {
-        MessagePlugin.error(t('knowledgeBase.missingId'));
-        return false;
-    }
-    
-    try {
-        const kbResponse = await getKnowledgeBaseById(currentKbId);
-        const kb = kbResponse.data;
-        
-        if (!kb.summary_model_id) {
-            MessagePlugin.warning(t('knowledgeBase.notInitialized'));
-            return false;
-        }
-        const strategy = kb.indexing_strategy;
-        const needsEmbedding = !strategy || strategy.vector_enabled || strategy.keyword_enabled;
-        if (needsEmbedding && !kb.embedding_model_id) {
-            MessagePlugin.warning(t('knowledgeBase.notInitialized'));
-            return false;
-        }
-        return true;
-    } catch (error) {
-        MessagePlugin.error(t('knowledgeBase.getInfoFailed'));
-        return false;
-    }
-}
-
-
-// 全局拖拽事件处理
-const handleGlobalDragEnter = (event: DragEvent) => {
-    event.preventDefault();
-    dragCounter++;
-    if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'all';
-    }
-    ismask.value = true;
-}
-
-const handleGlobalDragOver = (event: DragEvent) => {
-    event.preventDefault();
-    if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'copy';
-    }
-}
-
-const handleGlobalDragLeave = (event: DragEvent) => {
-    event.preventDefault();
-    dragCounter--;
-    if (dragCounter === 0) {
-        ismask.value = false;
-    }
-}
-
-const handleGlobalDrop = async (event: DragEvent) => {
-    event.preventDefault();
-    dragCounter = 0;
-    ismask.value = false;
-
-    const droppedFiles = await collectDroppedFiles(event);
-    if (droppedFiles.length === 0) {
-        MessagePlugin.warning(t('knowledgeBase.dragFileNotText'));
-        return;
-    }
-
-    if (isChatDropRoute()) {
-        event.stopPropagation();
-        window.dispatchEvent(new CustomEvent('weknora:chat-file-drop', {
-            detail: { files: droppedFiles }
-        }));
-        return;
-    }
-    
-    const isInitialized = await checkKnowledgeBaseInitialization();
-    if (!isInitialized) {
-        return;
-    }
-
-    droppedFiles.forEach(file => requestMethod(file, uploadInput));
-}
-
 // 组件挂载时添加全局事件监听器
 onMounted(() => {
-    document.addEventListener('dragenter', handleGlobalDragEnter, true);
-    document.addEventListener('dragover', handleGlobalDragOver, true);
-    document.addEventListener('dragleave', handleGlobalDragLeave, true);
-    document.addEventListener('drop', handleGlobalDrop, true);
+
     if (isWailsDesktop) {
         window.addEventListener('keydown', handleGlobalKeyDown);
         // @ts-ignore
@@ -214,10 +93,7 @@ function maybeOpenCmdkFromRoute() {
 
 // 组件卸载时移除全局事件监听器
 onUnmounted(() => {
-    document.removeEventListener('dragenter', handleGlobalDragEnter, true);
-    document.removeEventListener('dragover', handleGlobalDragOver, true);
-    document.removeEventListener('dragleave', handleGlobalDragLeave, true);
-    document.removeEventListener('drop', handleGlobalDrop, true);
+
     if (isWailsDesktop) {
         window.removeEventListener('keydown', handleGlobalKeyDown);
         // @ts-ignore
@@ -249,17 +125,6 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-}
-
-.upload-mask {
-    background-color: rgba(255, 255, 255, 0.8);
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    z-index: 999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 img {

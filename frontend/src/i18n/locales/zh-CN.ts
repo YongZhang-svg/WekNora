@@ -34,7 +34,7 @@ export default {
   batchManage: {
     title: "管理对话记录",
     selectAll: "全选",
-    cancel: "取消",
+    cancel: "退出",
     delete: "删除对话",
     deleteConfirmTitle: "删除对话",
     deleteConfirmBody: "确定要删除选中的 {count} 条对话吗？删除后无法恢复。",
