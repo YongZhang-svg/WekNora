@@ -1,7 +1,7 @@
 export default {
   menu: {
     knowledgeBase: "个人知识库",
-    agents: "智能体",
+    agents: "功能配置",
     organizations: "共享空间",
     chat: "写作助手",
     pptGeneration: "PPT生成",

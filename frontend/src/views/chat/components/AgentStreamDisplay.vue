@@ -241,44 +241,10 @@
           >
                <!-- 编辑模式 -->
                <div v-if="isEditingAnswer === event.event_id" class="editing-container">
-                  <!-- 浮动格式化工具栏 -->
-                  <div
-                    v-if="showFloatingToolbar && activeToolbarEvent"
-                    class="floating-format-toolbar"
-                    @mousedown.stop
-                  >
-                    <span class="toolbar-group-label">标题</span>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('h1')" title="标题1">H1</button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('h2')" title="标题2">H2</button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('h3')" title="标题3">H3</button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('p')" title="正文">P</button>
-                    <span class="floating-toolbar-sep"></span>
-                    <span class="toolbar-group-label">样式</span>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('bold')" title="加粗"><b>B</b></button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('italic')" title="斜体"><i>I</i></button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('underline')" title="下划线"><u>U</u></button>
-                    <span class="floating-toolbar-sep"></span>
-                    <span class="toolbar-group-label">列表</span>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('insertUnorderedList')" title="无序列表">&#8226; L</button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('insertOrderedList')" title="有序列表">1. L</button>
-                    <span class="floating-toolbar-sep"></span>
-                    <span class="toolbar-group-label">对齐</span>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('justifyLeft')" title="左对齐">&#x21E6;</button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('justifyCenter')" title="居中">&#x21D4;</button>
-                    <button class="floating-toolbar-btn" @click.stop="handleToolbarCmd('justifyRight')" title="右对齐">&#x21E8;</button>
-                    <span class="floating-toolbar-sep"></span>
-                    <span class="toolbar-group-label">颜色</span>
-                    <div class="color-btn-wrapper" title="字体颜色（红色）" @mousedown.capture="saveSelectionBeforeColor" @click.stop="handleFgColorClick">
-                      <span class="color-btn-preview" :style="{ borderBottomColor: '#e74c3c' }">A</span>
-                    </div>
-                    <div class="color-btn-wrapper" title="背景颜色（黄色）" @mousedown.capture="saveSelectionBeforeColor" @click.stop="handleBgColorClick">
-                      <span class="color-btn-preview bg-preview" :style="{ backgroundColor: '#f1c40f' }">A</span>
-                    </div>
-                  </div>
                   <div 
                     :ref="el => setEditableRef(event.event_id, el)"
                     class="editable-answer-content markdown-content"
-                    contenteditable="true"
+                    contenteditable="true" spellcheck="false"
                     @input="handleAnswerContentEdit(event, $event)"
                     @mouseup="onEditableMouseUp(event, $event)"
                     @keyup="onEditableKeyUp(event, $event)"
@@ -2562,18 +2528,35 @@ const handleAddToKnowledge = (answerEvent: any) => {
 // 切换答案编辑模式
 const handleToggleAnswerEdit = (answerEvent: any) => {
   if (isEditingAnswer.value === answerEvent.event_id) {
-    // 保存编辑
+    // 保存编辑：将编辑后的内容拼回原始内容
+    const el = editableElements.value[answerEvent.event_id];
+    const newContent = el?.innerText || answerEvent.content;
+    if (answerEvent._originalContent) {
+      answerEvent.content = answerEvent._originalContent.replace(/```outline\s*\n?([\s\S]*?)```/, '```outline\n' + newContent + '\n```');
+    } else {
+      answerEvent.content = newContent;
+    }
+    delete answerEvent._originalContent;
     isEditingAnswer.value = null;
     hideFloatingToolbar();
     MessagePlugin.success('内容已保存');
   } else {
+    // 检查是否有 outline 标记，有则触发弹窗
+    const outlineMatch = answerEvent.content?.match(/```outline\s*\n?([\s\S]*?)```/);
+    // 触发编辑弹窗（有 outline 标记则提取中间内容，否则使用全部内容）
+    window.dispatchEvent(new CustomEvent('open-outline-dialog', {
+      detail: { content: outlineMatch ? outlineMatch[1].trim() : answerEvent.content, fullContent: answerEvent.content, isOutline: !!outlineMatch, answerEvent: answerEvent }
+    }));
+    return;
     // 进入编辑模式
     isEditingAnswer.value = answerEvent.event_id;
+    answerEvent._originalContent = answerEvent.content;
+    const editContent = answerEvent.content;
     // 等待 DOM 更新后设置初始内容并显示工具栏
     nextTick(() => {
       const el = editableElements.value[answerEvent.event_id];
       if (el) {
-        el.innerHTML = answerEvent.content || '';
+        el.innerHTML = editContent ? marked(editContent) : '';
       }
       activeToolbarEvent.value = answerEvent;
       showFloatingToolbar.value = true;
@@ -2638,11 +2621,14 @@ const formatAgentText = (answerEvent: any, command: string = 'h1', value?: strin
 };
 
 const handleExportWord = async (answerEvent: any) => {
-  const content = getActualContent(answerEvent);
-  if (!content) {
+  const rawContent = getActualContent(answerEvent);
+  if (!rawContent) {
     MessagePlugin.warning(t('agentStream.copy.emptyContent'));
     return;
   }
+  // 如果有 ```outline 标记，只导出中间的内容
+  const outlineMatch = rawContent.match(/```outline\s*\n?([\s\S]*?)```/);
+  const content = outlineMatch ? outlineMatch[1].trim() : rawContent;
 
   const title = 'AI回复内容';
   
@@ -2672,7 +2658,7 @@ const handleExportWord = async (answerEvent: any) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent.trim();
         if (text) {
-          results.push(new TextRun({ text, size: 24, ...format })); // 12pt = 24 half-points
+          results.push(new TextRun({ text, size: 24, font: '方正仿宋_GBK', ...format })); // 12pt = 24 half-points
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const tagName = node.tagName.toLowerCase();
@@ -2690,11 +2676,12 @@ const handleExportWord = async (answerEvent: any) => {
             HeadingLevel.HEADING_6
           ];
           
-          const textRuns = Array.from(node.childNodes).flatMap((child: any) => processNode(child));
+          const textRuns = Array.from(node.childNodes).flatMap((child: any) => processNode(child, { color: '000000' }));
           if (textRuns.length > 0) {
             results.push(new Paragraph({
               heading: headingLevels[level - 1],
               children: textRuns,
+              alignment: level === 1 ? AlignmentType.CENTER : undefined,
               spacing: { before: 200, after: 100 }
             }));
           }
@@ -2706,7 +2693,7 @@ const handleExportWord = async (answerEvent: any) => {
             results.push(new Paragraph({
               children: textRuns,
               spacing: { after: 120 },
-              indent: { firstLine: 480 } // 首行缩进 2 字符
+              indent: { firstLineChars: 200 } // 首行缩进 2 字符
             }));
           }
         }
@@ -2718,16 +2705,18 @@ const handleExportWord = async (answerEvent: any) => {
               index++;
               const textRuns = Array.from(child.childNodes).flatMap((c: any) => processNode(c));
               if (textRuns.length > 0) {
+                const marker = tagName === 'ol' ? `${index}. ` : '• ';
                 results.push(new Paragraph({
                   children: [
-                    new TextRun({ 
-                      text: tagName === 'ol' ? `${index}. ` : '• ',
-                      size: 24
+                    new TextRun({
+                      text: marker.padStart(4),
+                      size: 24,
+                      font: '方正仿宋_GBK'
                     }),
                     ...textRuns
                   ],
-                  indent: { left: 720 },
-                  spacing: { after: 60 }
+                  indent: { left: 720, hanging: 360 },
+                  spacing: { before: 30, after: 30 }
                 }));
               }
             }
@@ -2736,6 +2725,9 @@ const handleExportWord = async (answerEvent: any) => {
         // 处理表格
         else if (tagName === 'table') {
           const rows: TableRow[] = [];
+          const firstRow = node.querySelector('tr');
+          const colCount = firstRow ? firstRow.children.length : 1;
+          const colWidth = Math.floor(100 / colCount);
           Array.from(node.querySelectorAll('tr')).forEach((tr: any) => {
             const cells: TableCell[] = [];
             Array.from(tr.children).forEach((cell: any) => {
@@ -2746,7 +2738,7 @@ const handleExportWord = async (answerEvent: any) => {
                   children: textRuns,
                   spacing: { after: 60 }
                 })],
-                width: { size: 100, type: WidthType.PERCENTAGE },
+                width: { size: colWidth, type: WidthType.PERCENTAGE },
                 shading: isHeader ? { fill: 'F0F0F0', type: 'clear' } : undefined
               }));
             });
@@ -2768,7 +2760,7 @@ const handleExportWord = async (answerEvent: any) => {
           results.push(...Array.from(node.childNodes).flatMap((child: any) => processNode(child, { ...format, italics: true })));
         }
         else if (tagName === 'br') {
-          results.push(new TextRun({ text: '', break: 1 }));
+          results.push(new TextRun({ text: '', break: 1, font: '方正仿宋_GBK' }));
         }
         // 其他标签，处理子节点
         else {
@@ -2787,7 +2779,7 @@ const handleExportWord = async (answerEvent: any) => {
     // 如果没有解析出任何内容，使用纯文本
     if (docChildren.length === 0) {
       docChildren.push(new Paragraph({
-        children: [new TextRun({ text: content, size: 24 })],
+        children: [new TextRun({ text: content, size: 24, font: '方正仿宋_GBK' })],
         spacing: { after: 120 }
       }));
     }

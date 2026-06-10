@@ -2096,7 +2096,12 @@ defineExpose({
           </svg>
         </div>
 
-
+        <!-- Agent 只读标签（显示当前选中的智能体名称） -->
+        <div v-if="hideAgentSelector" class="control-btn agent-mode-btn agent-mode-readonly">
+          <span class="agent-mode-text">
+            {{ selectedAgent.name || (isAgentEnabled ? $t('input.agentMode') : $t('input.normalMode')) }}
+          </span>
+        </div>
 
         <!-- Agent 选择器下拉菜单（当选项卡选择智能体时隐藏） -->
         <AgentSelector

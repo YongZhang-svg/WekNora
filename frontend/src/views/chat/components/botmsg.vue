@@ -29,38 +29,10 @@
             <div class="content-wrapper" v-if="hasActualContent">
                 <!-- 编辑模式 -->
                 <div v-show="isEditing" class="editing-container">
-                    <!-- 格式化工具栏 -->
-                    <div class="format-toolbar" style="display:flex !important;visibility:visible !important;opacity:1 !important;background:#e8f5e9 !important;border:2px solid #4caf50 !important;padding:6px 8px !important;margin-bottom:8px !important;border-radius:6px !important;">
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('h1')" title="标题1">H1</button>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('h2')" title="标题2">H2</button>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('h3')" title="标题3">H3</button>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('p')" title="正文">P</button>
-                        <span style="width:1px;height:18px;background:#ccc;margin:0 4px;display:inline-block !important;flex-shrink:0;"></span>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('bold')" title="加粗"><b>B</b></button>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('italic')" title="斜体"><i>I</i></button>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('underline')" title="下划线"><u>U</u></button>
-                        <span style="width:1px;height:18px;background:#ccc;margin:0 4px;display:inline-block !important;flex-shrink:0;"></span>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('insertUnorderedList')" title="无序列表">&#8226; L</button>
-                        <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" @click.stop="formatText('insertOrderedList')" title="有序列表">1. L</button>
-                        <span style="width:1px;height:18px;background:#ccc;margin:0 4px;display:inline-block !important;flex-shrink:0;"></span>
-                        <div style="position:relative;display:inline-flex !important;">
-                            <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" title="字体颜色">A<span style="display:block;height:2px;background:red;margin-top:-2px;"></span></button>
-                            <div style="display:none;position:absolute;top:100%;left:0;z-index:1000;padding:6px;background:white;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);margin-top:4px;">
-                                <button v-for="color in textColors" :key="color.value" style="display:flex;align-items:center;gap:6px;padding:4px 8px;border:none;border-radius:4px;background:transparent;font-size:12px;cursor:pointer;white-space:nowrap;width:100%;" :style="{ color: color.value, backgroundColor: color.value === '#000000' ? '#eee' : 'white' }" @click.stop="handleColorChange(color.value)">{{ color.label }}</button>
-                            </div>
-                        </div>
-                        <div style="position:relative;display:inline-flex !important;">
-                            <button class="toolbar-btn" style="display:inline-flex !important;min-width:30px;height:28px;padding:0 6px;border:1px solid #ccc;border-radius:4px;background:white;color:#333;font-size:12px;cursor:pointer;align-items:center;justify-content:center;" title="背景高亮">&#9632;<span style="display:block;height:2px;background:yellow;margin-top:-2px;"></span></button>
-                            <div style="display:none;position:absolute;top:100%;left:0;z-index:1000;padding:6px;background:white;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);margin-top:4px;">
-                                <button v-for="color in bgColors" :key="color.value" style="display:flex;align-items:center;gap:6px;padding:4px 8px;border:none;border-radius:4px;background:transparent;font-size:12px;cursor:pointer;white-space:nowrap;width:100%;" :style="{ backgroundColor: color.value === 'transparent' ? '#eee' : color.value, border: color.value === 'transparent' ? '1px solid #ccc' : 'none' }" @click.stop="handleBgColorChange(color.value)">{{ color.label === '无' ? '清除' : color.label }}</button>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 可编辑内容区域 -->
                     <div 
                         ref="editableContent"
                         class="editable-content markdown-content"
-                        contenteditable="true"
+                        contenteditable="true" spellcheck="false"
                         @input="handleContentEdit"
                     ></div>
                 </div>
@@ -294,17 +266,43 @@ const handleAddToKnowledge = () => {
     MessagePlugin.info(t('chat.editorOpened'));
 };
 
+// 从内容中提取 outline 包裹的部分
+const extractOutlineContent = (content) => {
+    const match = content?.match(/```outline\s*\n?([\s\S]*?)```/);
+    return match ? match[1].trim() : content;
+};
+
+// 存储原始完整内容（含 outline 标记）
+let originalFullContent = '';
+
 // 切换编辑模式
 const handleToggleEdit = () => {
     console.log('handleToggleEdit called, current isEditing:', isEditing.value);
     if (isEditing.value) {
-        // 保存编辑
+        // 保存编辑：将编辑后的内容拼回原始内容
+        const newContent = editableContent.value?.innerText || editedContent.value;
+        if (originalFullContent) {
+            const restored = originalFullContent.replace(/```outline\s*\n?([\s\S]*?)```/, '```outline\n' + newContent + '\n```');
+            if (props.session) {
+                props.session.content = restored;
+            }
+        } else if (props.session) {
+            props.session.content = newContent;
+        }
         isEditing.value = false;
         MessagePlugin.success('内容已保存');
     } else {
+        const content = props.content || props.session?.content || '';
+        const outlineMatch = content.match(/```outline\s*\n?([\s\S]*?)```/);
+        // 触发编辑弹窗（有 outline 标记则提取中间内容，否则使用全部内容）
+        window.dispatchEvent(new CustomEvent('open-outline-dialog', {
+            detail: { content: outlineMatch ? outlineMatch[1].trim() : content, fullContent: content, isOutline: !!outlineMatch, session: props.session }
+        }));
+        return;
         // 进入编辑模式
         isEditing.value = true;
-        editedContent.value = props.content || props.session?.content || '';
+        originalFullContent = content;
+        editedContent.value = extractOutlineContent(content);
         // 等待 DOM 更新后设置初始内容
         nextTick(() => {
             console.log('nextTick - isEditing:', isEditing.value, 'editableContent:', editableContent.value);
@@ -312,7 +310,7 @@ const handleToggleEdit = () => {
             const toolbar = document.querySelector('.format-toolbar');
             console.log('format-toolbar element:', toolbar, 'display:', toolbar?.style?.display);
             if (editableContent.value) {
-                editableContent.value.innerHTML = editedContent.value;
+                editableContent.value.innerHTML = marked(editedContent.value);
             }
         });
         MessagePlugin.info('进入编辑模式，点击内容即可编辑');
@@ -370,11 +368,14 @@ const handleBgColorChange = (color) => {
 
 // 导出为 Word 文档
 const handleExportWord = async () => {
-    const content = getActualContent();
-    if (!content) {
+    const rawContent = getActualContent();
+    if (!rawContent) {
         MessagePlugin.warning(t('chat.emptyContentWarning'));
         return;
     }
+    // 如果有 ```outline 标记，只导出中间的内容
+    const outlineMatch = rawContent.match(/```outline\s*\n?([\s\S]*?)```/);
+    const content = outlineMatch ? outlineMatch[1].trim() : rawContent;
     const title = 'AI回复内容';
     
     try {
@@ -403,7 +404,7 @@ const handleExportWord = async () => {
             if (node.nodeType === Node.TEXT_NODE) {
                 const text = node.textContent.trim();
                 if (text) {
-                    results.push(new TextRun({ text, size: 24, ...format })); // 12pt = 24 half-points
+                    results.push(new TextRun({ text, size: 24, font: '方正仿宋_GBK', ...format })); // 12pt = 24 half-points
                 }
             } else if (node.nodeType === Node.ELEMENT_NODE) {
                 const tagName = node.tagName.toLowerCase();
@@ -421,11 +422,12 @@ const handleExportWord = async () => {
                         HeadingLevel.HEADING_6
                     ];
                     
-                    const textRuns = Array.from(node.childNodes).flatMap((child) => processNode(child));
+                    const textRuns = Array.from(node.childNodes).flatMap((child) => processNode(child, { color: '000000' }));
                     if (textRuns.length > 0) {
                         results.push(new Paragraph({
                             heading: headingLevels[level - 1],
                             children: textRuns,
+                            alignment: level === 1 ? AlignmentType.CENTER : undefined,
                             spacing: { before: 200, after: 100 }
                         }));
                     }
@@ -437,7 +439,7 @@ const handleExportWord = async () => {
                         results.push(new Paragraph({
                             children: textRuns,
                             spacing: { after: 120 },
-                            indent: { firstLine: 480 } // 首行缩进 2 字符
+                            indent: { firstLineChars: 200 } // 首行缩进 2 字符
                         }));
                     }
                 }
@@ -449,16 +451,18 @@ const handleExportWord = async () => {
                             index++;
                             const textRuns = Array.from(child.childNodes).flatMap((c) => processNode(c));
                             if (textRuns.length > 0) {
+                                const marker = tagName === 'ol' ? `${index}. ` : '• ';
                                 results.push(new Paragraph({
                                     children: [
-                                        new TextRun({ 
-                                            text: tagName === 'ol' ? `${index}. ` : '• ',
-                                            size: 24
+                                        new TextRun({
+                                            text: marker.padStart(4),
+                                            size: 24,
+                                            font: '方正仿宋_GBK'
                                         }),
                                         ...textRuns
                                     ],
-                                    indent: { left: 720 },
-                                    spacing: { after: 60 }
+                                    indent: { left: 720, hanging: 360 },
+                                    spacing: { before: 30, after: 30 }
                                 }));
                             }
                         }
@@ -467,6 +471,9 @@ const handleExportWord = async () => {
                 // 处理表格
                 else if (tagName === 'table') {
                     const rows = [];
+                    const firstRow = node.querySelector('tr');
+                    const colCount = firstRow ? firstRow.children.length : 1;
+                    const colWidth = Math.floor(100 / colCount);
                     Array.from(node.querySelectorAll('tr')).forEach((tr) => {
                         const cells = [];
                         Array.from(tr.children).forEach((cell) => {
@@ -477,7 +484,7 @@ const handleExportWord = async () => {
                                     children: textRuns,
                                     spacing: { after: 60 }
                                 })],
-                                width: { size: 100, type: WidthType.PERCENTAGE },
+                                width: { size: colWidth, type: WidthType.PERCENTAGE },
                                 shading: isHeader ? { fill: 'F0F0F0', type: 'clear' } : undefined
                             }));
                         });
@@ -499,7 +506,7 @@ const handleExportWord = async () => {
                     results.push(...Array.from(node.childNodes).flatMap((child) => processNode(child, { ...format, italics: true })));
                 }
                 else if (tagName === 'br') {
-                    results.push(new TextRun({ text: '', break: 1 }));
+                    results.push(new TextRun({ text: '', break: 1, font: '方正仿宋_GBK' }));
                 }
                 // 其他标签，处理子节点
                 else {
@@ -518,7 +525,7 @@ const handleExportWord = async () => {
         // 如果没有解析出任何内容，使用纯文本
         if (docChildren.length === 0) {
             docChildren.push(new Paragraph({
-                children: [new TextRun({ text: content, size: 24 })],
+                children: [new TextRun({ text: content, size: 24, font: '方正仿宋_GBK' })],
                 spacing: { after: 120 }
             }));
         }

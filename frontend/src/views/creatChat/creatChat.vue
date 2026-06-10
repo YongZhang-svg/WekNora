@@ -7,7 +7,10 @@
                 </div>
                 <span style="--wails-draggable: drag">{{ getAgentName(settingsStore.selectedAgentId) }}</span>
             </div>
-
+            <WritingAssistantTabs
+                :activeAgentId="settingsStore.selectedAgentId"
+                @select="handleTabSelect"
+            />
             <InputField ref="inputFieldRef" :hideAgentSelector="true" :hideWebSearch="true" @send-msg="sendMsg"></InputField>
         </div>
     </div>
@@ -25,6 +28,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import InputField from '@/components/Input-field.vue';
+import WritingAssistantTabs from '@/components/WritingAssistantTabs.vue';
 
 import { createSessions } from "@/api/chat/index";
 import { useMenuStore } from '@/stores/menu';
@@ -64,6 +68,11 @@ const getAgentName = (id: string): string => {
 };
 const { t } = useI18n();
 const { navigateToKnowledgeBaseList } = useKnowledgeBaseCreationNavigation();
+
+// 写作助手选项卡选择处理
+const handleTabSelect = (agentId: string) => {
+  settingsStore.selectAgent(agentId);
+};
 
 const inputFieldRef = ref();
 
